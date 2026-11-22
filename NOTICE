@@ -39,10 +39,20 @@ Only used to build or test the program, not included in it:
   Microsoft.NET.Test.Sdk     MIT License             https://github.com/microsoft/vstest
   Qt, MinGW-w64, MSYS2       used by tools/RefDump to build the original C++ code
 
-Planned for the next phases (their notices will be added here when they are used):
-  Avalonia                   MIT License             https://github.com/AvaloniaUI/Avalonia
-  SkiaSharp                  MIT License             https://github.com/mono/SkiaSharp
+Used by the program:
   DryWetMIDI                 MIT License             https://github.com/melanchall/drywetmidi
   FluidSynth                 LGPL 2.1 or later       https://github.com/FluidSynth/fluidsynth
-  Microsoft.Data.Sqlite      MIT License             https://github.com/dotnet/efcore
+                             (the library is loaded if it is found; it is not included)
+  SkiaSharp                  MIT License             https://github.com/mono/SkiaSharp
+  Avalonia                   MIT License             https://github.com/AvaloniaUI/Avalonia
+                             (so far only in tools/ScoreWindow)
   DejaVu fonts               Bitstream Vera license  https://dejavu-fonts.github.io
+    src/PianoBooster.Rendering/fonts/DejaVuSans.ttf, as in src/fonts of PianoBooster.
+    Fonts are (c) Bitstream (see below). DejaVu changes are in public domain.
+    Bitstream Vera is a trademark of Bitstream, Inc. Copyright (c) 2003 by Bitstream, Inc.
+    All Rights Reserved. The fonts may be used, copied, modified and distributed, alone or
+    with other software, under the terms of the Bitstream Vera license:
+    https://dejavu-fonts.github.io/License.html
+
+Planned for the next phases (their notices will be added here when they are used):
+  Microsoft.Data.Sqlite      MIT License             https://github.com/dotnet/efcore

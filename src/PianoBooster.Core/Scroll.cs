@@ -2,11 +2,37 @@
 // Only the model: the queue of the slots on the screen and their colours. The C++ code
 // compiles each slot into an OpenGL display list; here the display list ids are kept (as
 // numbers, so that the same checks can be made) and the drawing goes to
-// PianoBooster.Rendering, which can watch Revision to know when the slots have changed.
+// PianoBooster.Rendering. What the C++ code compiles into each display list is kept as a
+// CompiledSlot (an immutable copy of the slot, transposed), so that the drawing can read it
+// without holding the lock of the song and draw exactly what the C++ code would draw.
 
 using System.Collections.Generic;
 
 namespace PianoBooster.Core;
+
+/// <summary>The content of a display list of the C++ code: the slot as it was when it was
+/// compiled (already transposed) and how far it moves the drawing on (its glTranslatef).
+/// It never changes; compiling the slot again makes a new one.</summary>
+public sealed class CompiledSlot
+{
+    private readonly Slot _slot;
+
+    public CompiledSlot(Slot slot, int displayListId, int nextDisplayListId, float deltaX)
+    {
+        _slot = slot;
+        DisplayListId = displayListId;
+        NextDisplayListId = nextDisplayListId;
+        DeltaX = deltaX;
+    }
+
+    public int DisplayListId { get; }
+    /// <summary>The display list that this one calls at its end.</summary>
+    public int NextDisplayListId { get; }
+    /// <summary>The translation (in pixels) before the symbols are drawn.</summary>
+    public float DeltaX { get; }
+    public int Length => _slot.Length;
+    public Symbol GetSymbol(int index) => _slot.GetSymbol(index);
+}
 
 /// <summary>A slot of the scroll queue with the ids of its display lists (the C++ CSlotDisplayList).</summary>
 public struct SlotDisplayList
@@ -48,6 +74,7 @@ public sealed class Scroll
     private long _wantedDelta;   // The running delta time of the wanted chord
 
     private readonly CircularQueue<SlotDisplayList> _scrollQueue; // The current active display list of notes/chords on the screen
+    private readonly Dictionary<int, CompiledSlot> _compiled = new(); // the display lists that exist
     private bool _show; // set to true to show on the screen
     private float _noteSpacingFactor;
     private float _ppqnFactor; // if PulsesPerQuarterNote is 96 then the factor is 1.0
@@ -87,6 +114,20 @@ public sealed class Scroll
     public CircularQueue<SlotDisplayList> ScrollQueue => _scrollQueue;
     /// <summary>Goes up each time the slots change (the C++ code compiles a display list then).</summary>
     public int Revision { get; private set; }
+    /// <summary>All the ticks (scaled by Speed.AdjustFactor) the score has scrolled since the
+    /// last reset. Not in the C++ code: it is for measuring the smoothness of the scrolling.</summary>
+    public long ScrolledTicks { get; private set; }
+
+    /// <summary>The content of a display list, null if it does not exist (never compiled, or deleted).</summary>
+    public CompiledSlot? GetCompiledSlot(int displayListId) =>
+        _compiled.TryGetValue(displayListId, out CompiledSlot? compiled) ? compiled : null;
+
+    // glDeleteLists()
+    private void DeleteList(int displayListId)
+    {
+        if (displayListId != 0)
+            _compiled.Remove(displayListId);
+    }
 
     public void SetChannel(int chan) => _notation.SetChannel(chan);
 
@@ -100,6 +141,12 @@ public sealed class Scroll
     {
         if (!_show || info.DisplayListId == 0)
             return;
+
+        // glNewList(): the slot is drawn transposed, after moving on by its delta time
+        Slot slot = info.Slot;
+        slot.Transpose(_transpose);
+        _compiled[info.DisplayListId] = new CompiledSlot(slot, info.DisplayListId, info.NextDisplayListId,
+                                                         (float)info.Slot.DeltaTime * _noteSpacingFactor);
         Revision++;
     }
 
@@ -214,6 +261,7 @@ public sealed class Scroll
 
             _deltaTail += info.Slot.DeltaTime * Speed.AdjustFactor;
 
+            DeleteList(info.DisplayListId);
             if (_wantedIndex > 0)
                 _wantedIndex--; // also the Chord has moved down one place
             else
@@ -253,6 +301,7 @@ public sealed class Scroll
         _deltaHead -= ticks;
         _deltaTail -= ticks;
         _wantedDelta -= ticks;
+        ScrolledTicks += ticks;
     }
 
     private bool ValidPianistChord(int index)
@@ -424,6 +473,7 @@ public sealed class Scroll
                 _scrollQueue.IndexRef(i).DisplayListId = 0;
                 _scrollQueue.IndexRef(i).NextDisplayListId = 0;
             }
+            _compiled.Clear();
             _symbolId = 0;
         }
     }
@@ -437,6 +487,8 @@ public sealed class Scroll
         _notation.Reset();
         _headSlot.Clear();
         _symbolId = 0;
+        _compiled.Clear();
+        ScrolledTicks = 0;
 
         _scrollQueue.Clear();
         _ppqnFactor = (float)MidiFile.DefaultPpqn / (float)MidiFile.PulsesPerQuarterNote;

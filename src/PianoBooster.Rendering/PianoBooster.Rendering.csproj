@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The drawing of the practice window of PianoBooster (Draw, Score, Scroll, Piano and the
+       parts of GlView that draw) on a SkiaSharp SKCanvas, in place of OpenGL 1.1. It does not
+       depend on Avalonia, so that it can also draw into a bitmap (tests, tools). -->
+  <PropertyGroup>
+    <RootNamespace>PianoBooster.Rendering</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PianoBooster.Core\PianoBooster.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The version that Avalonia 11.3 uses -->
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The font of the note names and bar numbers (as src/fonts of the C++ code) -->
+    <None Include="fonts\DejaVuSans.ttf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PianoBooster.Rendering.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A minimal Avalonia window with the practice view of PianoBooster (phase 3 of the port):
+       plays a MIDI file, scrolls the score drawn with Skia, and can measure the smoothness. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType> <!-- with a console: it writes the measurements -->
+    <RootNamespace>PianoBooster.ScoreWindow</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PianoBooster.Core\PianoBooster.Core.csproj" />
+    <ProjectReference Include="..\..\src\PianoBooster.Midi\PianoBooster.Midi.csproj" />
+    <ProjectReference Include="..\..\src\PianoBooster.Rendering\PianoBooster.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
+  </ItemGroup>
+
+</Project>
