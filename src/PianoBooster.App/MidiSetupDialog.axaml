@@ -1,0 +1,115 @@
+<!-- Ported from GuiMidiSetupDialog.ui of PianoBooster (C++): same control names. The QGroupBox
+     are borders with a title (as in SidePanel); the absolute layout of the "Latency Fix" tab is a
+     Canvas. GPLv3. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.MidiSetupDialog"
+        Title="MIDI Setup" Width="562" Height="408" MinWidth="460" MinHeight="380"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Border.group">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="TextBlock.groupTitle">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.right">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.group:disabled TextBlock">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="9">
+    <!-- buttonBox: Ok | Cancel -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                Spacing="8" Margin="0,9,0,0">
+      <Button x:Name="okButton" Content="OK" MinWidth="80" IsDefault="True"
+              HorizontalContentAlignment="Center" Click="OnOkButtonClicked" />
+      <Button x:Name="cancelButton" Content="Cancel" MinWidth="80" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCancelButtonClicked" />
+    </StackPanel>
+
+    <TabControl x:Name="midiSetupTabWidget">
+      <TabItem x:Name="tab" Header="MIDI input &amp; output">
+        <Grid RowDefinitions="*,Auto,*">
+          <Border Classes="group" Grid.Row="1">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="groupTitle" Text="Select the MIDI devices" />
+              <!-- midiInfoText: a read-only QTextEdit, at most 100 high -->
+              <Border BorderThickness="1" Background="White"
+                      BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+                <ScrollViewer MaxHeight="100" Height="100" HorizontalScrollBarVisibility="Disabled">
+                  <SelectableTextBlock x:Name="midiInfoText" TextWrapping="Wrap" Margin="4" />
+                </ScrollViewer>
+              </Border>
+              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
+                <TextBlock x:Name="label" Classes="right" Text="Midi Input Device:" />
+                <ComboBox x:Name="midiInputCombo" Grid.Column="1" HorizontalAlignment="Stretch"
+                          SelectionChanged="OnMidiInputComboActivated" />
+                <TextBlock x:Name="label_2" Classes="right" Grid.Row="1" Text="Midi Output Device:" />
+                <ComboBox x:Name="midiOutputCombo" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch"
+                          SelectionChanged="OnMidiOutputComboActivated" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem x:Name="tab_2" Header="FluidSynth">
+        <Grid RowDefinitions="*,Auto,6,Auto,*">
+          <Border Classes="group" Grid.Row="1">
+            <DockPanel>
+              <TextBlock Classes="groupTitle" Text="Sound Font" DockPanel.Dock="Top" />
+              <StackPanel DockPanel.Dock="Right" Spacing="6" Margin="6,0,0,0">
+                <Button x:Name="fluidLoadButton" Content="Load" MinWidth="80"
+                        HorizontalContentAlignment="Center" Click="OnFluidLoadButtonClicked" />
+                <Button x:Name="fluidClearButton" Content="Clear" MinWidth="80"
+                        HorizontalContentAlignment="Center" Click="OnFluidClearButtonClicked" />
+              </StackPanel>
+              <ListBox x:Name="soundFontList" MinHeight="70" />
+            </DockPanel>
+          </Border>
+          <Border Classes="group" Grid.Row="3" x:Name="fluidSettingsGroupBox">
+            <StackPanel>
+              <TextBlock Classes="groupTitle" Text="Settings" />
+              <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="6">
+                <TextBlock x:Name="label_18" Classes="right" Text="Master Gain:" />
+                <NumericUpDown x:Name="masterGainSpin" Grid.Column="1" Minimum="0" Maximum="200" Increment="5"
+                               Value="100" FormatString="0" ParsingNumberStyle="Integer" />
+                <CheckBox x:Name="reverbCheck" Grid.Column="2" Content="Reverb" />
+                <CheckBox x:Name="chorusCheck" Grid.Column="3" Content="Chorus" />
+
+                <TextBlock x:Name="label_8" Classes="right" Grid.Row="1" Text="Audio Driver:" />
+                <ComboBox x:Name="audioDriverCombo" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" />
+                <TextBlock x:Name="label_9" Classes="right" Grid.Row="1" Grid.Column="2" Text="Sample Rate:" />
+                <ComboBox x:Name="sampleRateCombo" Grid.Row="1" Grid.Column="3" IsEditable="True" HorizontalAlignment="Stretch" />
+
+                <TextBlock x:Name="label_3" Classes="right" Grid.Row="2" Text="Buffer Size:" />
+                <ComboBox x:Name="bufferSizeCombo" Grid.Row="2" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+                <TextBlock x:Name="label_4" Classes="right" Grid.Row="2" Grid.Column="2" Text="Buffer Count:" />
+                <ComboBox x:Name="bufferCountCombo" Grid.Row="2" Grid.Column="3" IsEditable="True" HorizontalAlignment="Stretch" />
+              </Grid>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem x:Name="tab_3" Header="Latency Fix">
+        <Canvas>
+          <Button x:Name="latencyFixButton" Canvas.Left="40" Canvas.Top="120" Width="121" Height="29"
+                  Content="Latency" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                  Click="OnLatencyFixButtonClicked" />
+          <TextBlock x:Name="latencyFixLabel" Canvas.Left="200" Canvas.Top="125" Width="195"
+                     TextAlignment="Center" Text="0 (msec)" />
+        </Canvas>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

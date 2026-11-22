@@ -104,4 +104,29 @@ internal sealed class MessageDialog : Window
         };
         return await dialog.ShowDialog<object?>(owner) as string;
     }
+
+    /// <summary>QInputDialog::getInt(): the value, or null if cancelled. The label is rich text
+    /// (shown with HtmlText).</summary>
+    public static async Task<int?> GetInt(Window owner, string title, string label, int value, int min, int max, int step)
+    {
+        var spin = new NumericUpDown
+        {
+            Minimum = min,
+            Maximum = max,
+            Increment = step,
+            Value = System.Math.Clamp(value, min, max),
+            FormatString = "0",
+            ParsingNumberStyle = System.Globalization.NumberStyles.Integer,
+            MinWidth = 150,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var panel = new StackPanel { Spacing = 6 };
+        panel.Children.Add(HtmlText.ToPanel("<p>" + label + "</p>"));
+        panel.Children.Add(spin);
+        var dialog = new MessageDialog(title, panel, 300);
+        dialog.AddButtonWith(Strings.Tr("OK"), () => (int)System.Math.Clamp(spin.Value ?? min, min, max), isDefault: true);
+        dialog.AddButton(Strings.Tr("Cancel"), null);
+        dialog.Opened += (_, _) => spin.Focus();
+        return await dialog.ShowDialog<object?>(owner) as int?;
+    }
 }

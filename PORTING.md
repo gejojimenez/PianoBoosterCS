@@ -131,7 +131,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.2 | **hecha** (22 nov 2026) | `LibraryDialog` (`GuiLibraryDialog`). Sin pruebas nuevas (es interfaz): las 114 siguen en verde; probado en la app. Ver §11.2 |
 | 5.3 | **hecha** (22 nov 2026) | `SectionPlayer` (Midi), piano roll y vista general (Rendering + controles en la app), `tools/PianoRollWindow`. 14 pruebas nuevas en verde y las 114 anteriores sin cambios. Ver §11.3 |
 | 5.4 | **hecha** (22 nov 2026) | `SectionEditor` (`GuiSectionEditor`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.4 |
-| 5.5 | pendiente | `GuiMidiSetupDialog`. Ver §11.5 |
+| 5.5 | **hecha** (22 nov 2026) | `MidiSetupDialog` (`GuiMidiSetupDialog`); se borra el provisional. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.5 |
 | 5.6 | pendiente | `GuiKeyboardSetupDialog`. Ver §11.6 |
 | 5.7 | pendiente | `GuiPreferencesDialog`. Ver §11.7 |
 | 5.8 | pendiente | `GuiSongDetailsDialog`. Ver §11.8 |
@@ -405,10 +405,9 @@ Se ha pasado de Avalonia 11.3.23 a **12.1.6** (la app, `tools/ScoreWindow`) y Sk
 | `LoopingPopup.axaml(.cs)` | `GuiLoopingPopup.*` (+ `.ui`) | Es el contenido de un `Popup` de la barra superior (en C++ una ventana `Qt::Popup`) |
 | `Settings.cs` | `Settings.*` (`CSettings`) | Implementa `IPianoSettings` sobre `SettingsStore`. Mismas claves y valores por defecto |
 | `ScoreView.cs` | `GlView.*` (ritmo de fotogramas) | Movido desde `tools/ScoreWindow` (que lo enlaza). Nuevo: `StopTimerEvent`/`StartTimerEvent` y `WarningMessageSource` (el aviso de `getWarningMessage`, leído cada fotograma) |
-| `MessageDialog.cs` | `QMessageBox`, `QInputDialog` | Información, aviso, pregunta Sí/No y texto |
+| `MessageDialog.cs` | `QMessageBox`, `QInputDialog` | Información, aviso, pregunta Sí/No, texto y número (`GetInt`, desde 5.5) |
 | `HtmlText.cs` | texto enriquecido de Qt | Avalonia no tiene control HTML: entiende lo que usa PianoBooster (`h1`-`h3`, `p`, `blockquote`, `b`, `i`, `br`, `a`, `center`, tablas sencillas). Lo usan la ayuda, "acerca de" y la página del tutor |
 | `KeepDisplayOnPlatform.cs` | `KeepDisplayOn.cpp` | Da sus acciones a `Core.KeepDisplayOn`. Ver abajo |
-| `MidiSetupDialogProvisional.cs` | parte de `GuiMidiSetupDialog::accept()` | **Provisional**: elegir entrada y salida MIDI hasta portar el diálogo en la fase 5 |
 | `Strings.cs` | `tr()` | Devuelve el texto en inglés hasta la fase 6 |
 | `images/` | `src/images` | `play`, `stop`, `play-from-start`, `flag`, `pianobooster` (.png/.ico) |
 
@@ -490,7 +489,7 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 
 - Diálogos que aún muestran "not ported yet (phase 5)": detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
-  (Ctrl+P). El diálogo MIDI (Ctrl+S) es el provisional.
+  (Ctrl+P).
 
 ### Sin probar
 
@@ -721,6 +720,48 @@ desde el editor (los mismos diálogos que "New..." y el panel), "Practise" con u
   `src/PianoBooster.Midi`) y la lista de SoundFonts de `Settings` (`GetFluidSoundFontNames`...).
 - **C#:** `MidiSetupDialog.axaml(.cs)`; **borrar** `MidiSetupDialogProvisional.cs` y llamar al nuevo en
   `MainWindow.OnShowMidiSetup`. Ojo a la latencia (`Midi/Latency`, `Keyboard/RightSoundPrevious`).
+
+#### Lo hecho (5.5)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/MidiSetupDialog.axaml(.cs)` | `GuiMidiSetupDialog.*` (+ `.ui`) | Mismos nombres de controles que el `.ui` (`midiSetupTabWidget`, `midiInputCombo`, `midiInfoText`, `soundFontList`, `fluidSettingsGroupBox`, `masterGainSpin`, `latencyFixButton`...) y métodos (`Init`, `SetComboFromSetting`, `RefreshMidiInputCombo`, `UpdateMidiInfoText`, `UpdateFluidInfoStatus`, `Accept`...). Las listas de puertos, del `MidiDevice` de la ventana; el `Song`, con su lock |
+| `App/MainWindow.axaml.cs` | `QtWindow::showMidiSetup()` | `new MidiSetupDialog()` + `Init(...)` + `ShowDialog`; se borra `MidiSetupDialogProvisional.cs` |
+| `App/MessageDialog.cs` | `QInputDialog::getInt` | Nuevo `GetInt` (`NumericUpDown` con mínimo, máximo y paso; el texto, con `HtmlText` por los `<br>` y `<b>`) |
+| `App/Settings.cs` | `QSettings::remove` | Nuevo `Remove(clave)`: la clave y, si es un grupo (`"FluidSynth"`), todas las suyas |
+
+- `accept()` igual que el C++: ajustes de FluidSynth (o `remove("FluidSynth")` sin SoundFont), `saveSoundFontSettings`,
+  entrada y salida, rango del piano, avisos, `Midi/Latency` y, si la latencia cambió, silenciar el piano
+  (`Keyboard/RightSoundPrevious` ← `RightSound`, `RightSound` = 0) o recuperarlo. Cancelar no guarda nada (pero, como
+  en C++, la lista de SoundFonts en memoria sí cambia con Load/Clear; se guarda en el siguiente OK).
+- Probado en la app (`--settings=` en el scratchpad, sin sonido: `Midi/Output` vacío y un `.sf2` **vacío y ficticio**
+  en `FluidSynth/SoundFont` que nunca se carga; ratón con `mouse_event` absoluto, teclas solo si la ventana de delante
+  es de la app): Ctrl+S abre el diálogo; textos de información (sin teclado MIDI, sin salida en rojo, el aviso naranja
+  del "Microsoft GS Wavetable Synth"); la salida "Internal Sound (FluidSynth)" en la lista; pestaña FluidSynth con los
+  valores del JSON (ganancia, reverb, frecuencia, búferes); el filtro de dígitos de "Sample Rate"; latencia 150 → OK
+  (`Midi/Latency` 150, `RightSoundPrevious` 1, `RightSound` 0); Cancel (no cambia nada); Clear (lista vacía, ajustes
+  desactivados) → OK (se borran las claves `FluidSynth/*` y queda `FluidSynth/SoundFont` = `[]`); latencia 0 → OK
+  (`RightSound` = `RightSoundPrevious`).
+
+**Diferencias deliberadas con el C++:**
+- La pestaña FluidSynth se quita si no está la librería de FluidSynth (en C++, al compilar sin `WITH_INTERNAL_FLUIDSYNTH`).
+- `midiInfoText` es un `SelectableTextBlock` con un `Run` de color por línea (no un `QTextEdit`); el `"\n"` del aviso
+  del GS Wavetable, que en el HTML de Qt es un espacio, es un espacio.
+- `QIntValidator` de los combos editables: solo se aceptan dígitos y nunca un número mayor que el máximo (Qt deja
+  además estados intermedios menores que el mínimo; aquí también).
+- El selector de SoundFont es el `StorageProvider` de Avalonia (filtro `*.sf2 *.sf3`); la ruta se guarda con `/`.
+
+**Fallos encontrados en el original (no corregidos):**
+- Al quitar la latencia, `setPianoSoundPatches(previousRightSound, -2)` recibe el número del ajuste (empieza en 1) sin
+  el `- 1` que pone `QtWindow::init()`: hasta reiniciar, suena el instrumento siguiente al elegido.
+- Si se cambia la latencia dos veces seguidas a un valor > 0, la segunda guarda en `RightSoundPrevious` el 0 de la
+  primera (piano ya silenciado) y, al volver a 0, el piano queda sin sonido (visto en la prueba).
+- `on_fluidClearButton_clicked` no llama a `updateMidiInfoText()`: si la salida era FluidSynth, el texto sigue diciendo
+  esa salida hasta cambiar algo.
+
+**Sin probar:** cargar un SoundFont de verdad con "Load" (el selector de ficheros no se ha automatizado y no debía
+sonar), aceptar con FluidSynth o un puerto como salida, un teclado MIDI real (el texto de "MIDI Through" y el rango
+`Keyboard/LowestNote`/`HighestNote`), macOS/Linux (controladores de audio) y escalas distintas de 100 %.
 
 ### 11.6 Teclado
 

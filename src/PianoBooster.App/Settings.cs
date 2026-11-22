@@ -76,6 +76,14 @@ public sealed class Settings : IPianoSettings
     public void SetValue(string key, bool value) => _store.SetValue(key, value);
     public void SetValue(string key, IEnumerable<string> value) => _store.SetValue(key, value);
 
+    /// <summary>QSettings::remove(): the key and, if it is a group ("FluidSynth"), all the keys in it.</summary>
+    public void Remove(string key)
+    {
+        foreach (string k in _store.AllKeys())
+            if (k == key || k.StartsWith(key + "/", StringComparison.Ordinal))
+                _store.Remove(k);
+    }
+
     // IPianoSettings
     public string GetString(string key, string defaultValue = "") => _store.GetString(key, defaultValue);
     public int GetInt(string key, int defaultValue = 0) => _store.GetInt(key, defaultValue);

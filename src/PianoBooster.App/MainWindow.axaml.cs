@@ -754,10 +754,17 @@ public partial class MainWindow : Window
         topBar.StopMuiscPlaying();
 
         _glWidget.StopTimerEvent();
-        // GuiMidiSetupDialog comes in phase 5: until then, a provisional dialog with the ports
-        await MidiSetupDialogProvisional.ShowDialog(this, _song, _sync, _settings, _midiDevice);
-        _midiDevice.FlushMidiInput();
-        _glWidget.StartTimerEvent();
+        try
+        {
+            var midiSetupDialog = new MidiSetupDialog();
+            midiSetupDialog.Init(_song, _sync, _settings, _midiDevice);
+            await midiSetupDialog.ShowDialog<bool?>(this);
+        }
+        finally
+        {
+            _midiDevice.FlushMidiInput();
+            _glWidget.StartTimerEvent();
+        }
     }
 
     private async void OnShowPreferencesDialog(object? sender, RoutedEventArgs e)
