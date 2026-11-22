@@ -15,4 +15,9 @@
     <ProjectReference Include="..\..\src\PianoBooster.Midi\PianoBooster.Midi.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The same MIDI files as the tests of the core (for SectionPlayer) -->
+    <None Include="..\PianoBooster.Core.Tests\TestData\midi\*.mid" Link="TestData\midi\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

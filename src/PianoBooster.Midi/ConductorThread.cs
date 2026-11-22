@@ -137,8 +137,9 @@ public sealed partial class ConductorThread : IDisposable
     }
 
     /// <summary>Waits for a short time. On Windows a high resolution waitable timer (Windows 10
-    /// 1803 and later) or, without it, Sleep with a timer resolution of 1 ms.</summary>
-    private abstract class PeriodicWaiter : IDisposable
+    /// 1803 and later) or, without it, Sleep with a timer resolution of 1 ms. Also used by
+    /// <see cref="SectionPlayer"/>.</summary>
+    internal abstract class PeriodicWaiter : IDisposable
     {
         public abstract void Wait(long nsecs);
         public virtual void Dispose() { }

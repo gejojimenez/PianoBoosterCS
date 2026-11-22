@@ -77,8 +77,10 @@ PianoBoosterCS/
    ├─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
    ├─ MakeSyntheticMidi/        Escribe los MIDI sintéticos de las pruebas
    ├─ PlaySong/                 Consola: reproducir (listen) o tocar (follow...) un MIDI  (fase 2)
-   └─ ScoreWindow/              Ventana Avalonia mínima con la partitura; mide la fluidez (fase 3;
-                                usa el ScoreView de la app)
+   ├─ ScoreWindow/              Ventana Avalonia mínima con la partitura; mide la fluidez (fase 3;
+   │                            usa el ScoreView de la app)
+   └─ PianoRollWindow/          Ventana de prueba del piano roll y el SectionPlayer (fase 5.3; usa
+                                los controles de la app)
 ```
 
 **Hilos (a partir de la fase 2):**
@@ -127,7 +129,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 4 | **hecha** (22 nov 2026) | `PianoBooster.App` + `PianoBooster.Data`; Avalonia 12.1.6. 8 pruebas nuevas en verde y las 96 anteriores sin cambios. Ver §10 |
 | 5.1 | **hecha** (22 nov 2026) | `PianoBooster.Data.Library` (Microsoft.Data.Sqlite 9.0.11, mismo `library.db`). 10 pruebas nuevas en verde y las 104 anteriores sin cambios. Ver §11.1 |
 | 5.2 | **hecha** (22 nov 2026) | `LibraryDialog` (`GuiLibraryDialog`). Sin pruebas nuevas (es interfaz): las 114 siguen en verde; probado en la app. Ver §11.2 |
-| 5.3 | pendiente | `SectionPlayer` + `GuiPianoRoll`. Ver §11.3 |
+| 5.3 | **hecha** (22 nov 2026) | `SectionPlayer` (Midi), piano roll y vista general (Rendering + controles en la app), `tools/PianoRollWindow`. 14 pruebas nuevas en verde y las 114 anteriores sin cambios. Ver §11.3 |
 | 5.4 | pendiente | `GuiSectionEditor`. Necesita 5.1 y 5.3. Ver §11.4 |
 | 5.5 | pendiente | `GuiMidiSetupDialog`. Ver §11.5 |
 | 5.6 | pendiente | `GuiKeyboardSetupDialog`. Ver §11.6 |
@@ -632,12 +634,49 @@ más de 5000 canciones, macOS/Linux.
   de Avalonia que dibuja en `Render(DrawingContext)` (o Skia como `ScoreView`). `SongMap` ya está en el Core.
 - Se puede probar sin el editor: una ventana de prueba o una prueba que dibuje el piano roll en un bitmap.
 
+#### Lo hecho (5.3)
+
+```powershell
+dotnet run --project tools\PianoRollWindow -- <fichero.mid> --select 3-6 --soundfont <fichero.sf2>
+dotnet run --project tools\PianoRollWindow -- <fichero.mid> --play --quit-after 3 --screenshot <carpeta>\r.png
+```
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `Midi/SectionPlayer.cs` | `SectionPlayer.*` (`CSectionPlayer`) | Recibe `SongMap` e `IMidiDevice`. El `QTimer` de 2 ms del hilo de la interfaz pasa a un hilo propio con el temporizador de alta resolución de `ConductorThread` (`PeriodicWaiter`, ahora `internal`). `PositionChanged` y `Stopped` se envían al `SynchronizationContext` de quien lo crea (el hilo de la interfaz, como las señales de Qt); `Stop()` avisa en el momento. `Dispose()` = destructor (para sin `Stopped`) |
+| `Rendering/PianoRoll.cs` | `GuiPianoRoll.*` | Modelos sin interfaz: `PianoRollView` (`CPianoRollView`: estado, zoom, desplazamiento, redondeo, ratón y dibujo en un `SKCanvas`), `SongOverview` (`CSongOverview`, notas en un `SKPicture` por tamaño, como el `QPixmap`), `PianoRollNotes` (`isPractisedNote`, `pianoRollNoteColor`, `noteRange`, colores de las secciones), `Snap` (`CSnap`), `ScrollBarModel` (el `QScrollBar`: valor dentro del rango) y `PianoRollPalette` (los colores de `QPalette`, claro y oscuro) |
+| `App/PianoRoll.cs` | widgets de `GuiPianoRoll` | `PianoRollControl` (`DockPanel` con la vista y una `ScrollBar` siempre visible) y `SongOverviewControl`. Dan al modelo el tamaño, el ratón (con captura), la rueda y el tema; graban el dibujo en un `SKPicture` en el hilo de la interfaz y el hilo de render solo lo reproduce |
+| `tools/PianoRollWindow` | — | Conecta las dos vistas y el reproductor como lo hará el editor (centrar desde la vista general, rango visible, cursor siguiendo la reproducción, clic en una sección). Teclas en `--help` |
+
+- Pruebas: `SectionPlayerTests` (6, Midi; reloj propio y un dispositivo que guarda lo enviado): notas exactas de
+  `[inicio, fin)`, silencio y pedal al final, controladores anteriores al inicio, repetir, velocidad (también
+  cambiada a mitad) y el hilo de verdad. `PianoRollTests` (8, Rendering): redondeo, zoom/desplazamiento/cursor,
+  selección con el ratón (nueva, mover un borde, clic sin arrastrar), clic en las secciones del carril (la más
+  corta si se solapan), colores de las manos y notas atenuadas fuera de la selección en un bitmap, ocultar los
+  otros instrumentos y la vista general (PNG en `%TEMP%\PianoBooster.Rendering.Tests`).
+- Probado en `PianoRollWindow` (capturas): tema claro y oscuro, cambios de compás en la regla, reproducción con
+  el cursor avanzando, sin sonido.
+
+**Diferencias deliberadas con el C++:**
+- El reproductor tiene su propio hilo (ver arriba); las señales pendientes de una reproducción anterior se
+  descartan al parar o volver a tocar (en Qt no podían llegar tarde porque todo era el mismo hilo).
+- Los widgets de Qt se parten en modelo (Rendering) y control (App) para poder probar el dibujo en un bitmap.
+- Rueda: Avalonia da pasos; se multiplican por 120 para usar las fórmulas de `angleDelta` de Qt.
+- El texto usa la fuente por defecto de Skia a 8 pt (96 ppp), no la del estilo de Qt; el recorte con "…" se
+  calcula a mano (`elidedText`).
+- La paleta: la clara imita la de Qt en Windows y la oscura la "Fusion" oscura; se elige por el tema de Avalonia.
+
+**Sin probar:** arrastrar con el ratón real en la ventana (la lógica sí, en las pruebas), con sonido de verdad
+(FluidSynth o un puerto) y escalas de pantalla distintas de 100 %.
+
 ### 11.4 Editor de secciones (necesita 5.1 y 5.3)
 
 - **C++:** `GuiSectionEditor.h/.cpp` (146 + 670) y `QtWindow::openSectionEditor()`.
 - **C#:** `SectionEditor.axaml(.cs)`. `MainWindow.OpenSectionEditor()` ya hace lo de antes y después
   (parar, `ReloadPartsAfterEditing`, volúmenes); falta crear el editor con los argumentos del C++ y, si se
   acepta, `SelectInstrument` + `PractisePart`/`PractiseSelection` (ya en `SidePanel`).
+- De 5.3: `PianoRollControl.View`, `SongOverviewControl.Overview` y `SectionPlayer` (crearlo en el hilo de la
+  interfaz; `Dispose()` al cerrar). `tools/PianoRollWindow/Program.cs` muestra cómo conectarlos.
 
 ### 11.5 Diálogo MIDI
 

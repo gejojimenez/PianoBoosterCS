@@ -16,4 +16,8 @@
     <PackageReference Include="Melanchall.DryWetMidi" Version="8.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="PianoBooster.Midi.Tests" />
+  </ItemGroup>
+
 </Project>

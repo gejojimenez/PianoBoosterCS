@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A test window for the piano roll, the overview and the SectionPlayer of the section
+       editor (phase 5.3 of the port), before the editor itself. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType> <!-- with a console -->
+    <RootNamespace>PianoBooster.PianoRollWindow</RootNamespace>
+    <ApplicationManifest>..\ScoreWindow\app.manifest</ApplicationManifest>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PianoBooster.Core\PianoBooster.Core.csproj" />
+    <ProjectReference Include="..\..\src\PianoBooster.Midi\PianoBooster.Midi.csproj" />
+    <ProjectReference Include="..\..\src\PianoBooster.Rendering\PianoBooster.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The controls of the application -->
+    <Compile Include="..\..\src\PianoBooster.App\PianoRoll.cs" Link="PianoRoll.cs" />
+    <Compile Include="..\..\src\PianoBooster.App\Strings.cs" Link="Strings.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+  </ItemGroup>
+
+</Project>
