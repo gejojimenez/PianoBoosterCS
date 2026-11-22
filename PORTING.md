@@ -130,7 +130,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.1 | **hecha** (22 nov 2026) | `PianoBooster.Data.Library` (Microsoft.Data.Sqlite 9.0.11, mismo `library.db`). 10 pruebas nuevas en verde y las 104 anteriores sin cambios. Ver §11.1 |
 | 5.2 | **hecha** (22 nov 2026) | `LibraryDialog` (`GuiLibraryDialog`). Sin pruebas nuevas (es interfaz): las 114 siguen en verde; probado en la app. Ver §11.2 |
 | 5.3 | **hecha** (22 nov 2026) | `SectionPlayer` (Midi), piano roll y vista general (Rendering + controles en la app), `tools/PianoRollWindow`. 14 pruebas nuevas en verde y las 114 anteriores sin cambios. Ver §11.3 |
-| 5.4 | pendiente | `GuiSectionEditor`. Necesita 5.1 y 5.3. Ver §11.4 |
+| 5.4 | **hecha** (22 nov 2026) | `SectionEditor` (`GuiSectionEditor`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.4 |
 | 5.5 | pendiente | `GuiMidiSetupDialog`. Ver §11.5 |
 | 5.6 | pendiente | `GuiKeyboardSetupDialog`. Ver §11.6 |
 | 5.7 | pendiente | `GuiPreferencesDialog`. Ver §11.7 |
@@ -489,7 +489,7 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 
-- Diálogos que aún muestran "not ported yet (phase 5)": editor de secciones (Ctrl+E), detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
+- Diálogos que aún muestran "not ported yet (phase 5)": detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
   (Ctrl+P). El diálogo MIDI (Ctrl+S) es el provisional.
 
 ### Sin probar
@@ -677,6 +677,43 @@ dotnet run --project tools\PianoRollWindow -- <fichero.mid> --play --quit-after 
   acepta, `SelectInstrument` + `PractisePart`/`PractiseSelection` (ya en `SidePanel`).
 - De 5.3: `PianoRollControl.View`, `SongOverviewControl.Overview` y `SectionPlayer` (crearlo en el hilo de la
   interfaz; `Dispose()` al cerrar). `tools/PianoRollWindow/Program.cs` muestra cómo conectarlos.
+
+#### Lo hecho (5.4)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/SectionEditor.axaml(.cs)` | `GuiSectionEditor.*` (sin `.ui`) | Mismos nombres sin `m_` (`partList`, `startBarSpin`, `infoLabel`, `playButton`...) y métodos (`LoadParts`, `SetSelection`, `ShowSelectionInFields`, `IsDirty`, `ResolveChanges`, `TogglePlay`, `Practise`, `Reject`...). Usa `PianoRollControl`, `SongOverviewControl` y un `SectionPlayer` creado en el constructor (hilo de la interfaz) y liberado en `Closed` (el destructor) |
+| `App/MainWindow.axaml.cs` | `QtWindow::openSectionEditor()` | Crea el editor con los argumentos del C++ (lo leído del `Song` bajo el lock), `SetInitialSelection` y, si se acepta, `SelectInstrument` + `PractisePart`/`PractiseSelection`; si no, `ReloadPartsAfterEditing`. Un indicador evita abrir otro con Ctrl+E mientras está abierto |
+| `App/MessageDialog.cs` | `QMessageBox::question` con `Save \| Discard \| Cancel` | Nuevo `SaveDiscardCancel` (Esc = Cancel) |
+
+- Los `QMessageBox`/`QInputDialog` de Qt bloquean; aquí se esperan con `await`, así que los métodos que preguntan son
+  `async void`. Mientras hay una pregunta abierta (`_asking`) no se atienden el espacio, Esc ni otra pregunta.
+- `reject()`: el botón Close, Esc y la X de la ventana (`Closing` se cancela y llama a `Reject`, que pregunta si hay
+  cambios y cierra después), como `QDialog::closeEvent()`.
+- El atajo del espacio (`QShortcut`) es un manejador *tunnel*: va antes que el control con el foco, salvo en un cuadro
+  de texto (los `NumericUpDown`), como el `ShortcutOverride` de `QLineEdit`.
+- Probado en la app (`--settings=` en el scratchpad, sin sonido; ratón con `mouse_event`, teclas solo si la ventana
+  de delante es de la app): abrir con Ctrl+E, seleccionar arrastrando, campos e información, vista general, "New..."
+  (dos secciones, en la lista, el carril y la vista general), cambiar el final con los campos (Save activo y "Changed"),
+  Close → pregunta → Cancel (sigue abierto), Esc → pregunta → Discard (no se guarda), Save, espacio sin salida MIDI
+  (aviso), "Practise" con una sección (el panel la elige y el bucle va de su inicio a su final) y volver a abrir con
+  la sección del panel elegida y centrada.
+
+**Diferencias deliberadas con el C++:**
+- El dispositivo es el `MidiDevice` de la ventana (el C++ pasa `m_song`, que es un `CMidiDevice`; `CConductor` no
+  redefine `playMidiEvent`, así que es lo mismo).
+- Los iconos del botón Play son una imagen y un texto dentro del botón; el "%" de la velocidad es un texto aparte.
+- `QDoubleSpinBox` con dos decimales → `NumericUpDown` con `FormatString="0.00"`; el valor se redondea a dos decimales
+  al leerlo. El separador decimal es el de la cultura del sistema (como Qt).
+- El tamaño inicial es el 85 % del área de cliente de la ventana principal (`parent->size() * 0.85`).
+
+**Fallo encontrado en el original (no corregido):** en `partRowChanged`, si la sección actual tiene cambios y se
+contesta "Save", `savePart()` llama a `loadParts(id antiguo)`, que vuelve a marcar en la lista la sección antigua;
+después se elige la nueva (selección, carril), pero la lista sigue mostrando la antigua.
+
+**Sin probar:** escuchar de verdad (FluidSynth o un puerto; sin salida solo sale el aviso), "Rename..." y "Delete"
+desde el editor (los mismos diálogos que "New..." y el panel), "Practise" con una selección que no es una sección
+(`PractiseSelection`), el clic en el carril de secciones con el ratón real, macOS/Linux y escalas distintas de 100 %.
 
 ### 11.5 Diálogo MIDI
 

@@ -75,6 +75,18 @@ internal sealed class MessageDialog : Window
         return await dialog.ShowDialog<object?>(owner) is true;
     }
 
+    public enum SaveAnswer { Save, Discard, Cancel }
+
+    /// <summary>QMessageBox::question() with Save | Discard | Cancel (Save is the default; Esc is Cancel).</summary>
+    public static async Task<SaveAnswer> SaveDiscardCancel(Window owner, string title, string text)
+    {
+        var dialog = new MessageDialog(title, TextContent(text), 300);
+        dialog.AddButton(Strings.Tr("Save"), SaveAnswer.Save, isDefault: true);
+        dialog.AddButton(Strings.Tr("Discard"), SaveAnswer.Discard);
+        dialog.AddButton(Strings.Tr("Cancel"), SaveAnswer.Cancel);
+        return await dialog.ShowDialog<object?>(owner) is SaveAnswer answer ? answer : SaveAnswer.Cancel;
+    }
+
     /// <summary>QInputDialog::getText(): the text, or null if cancelled.</summary>
     public static async Task<string?> GetText(Window owner, string title, string label, string text)
     {

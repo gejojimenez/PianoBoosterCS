@@ -676,9 +676,14 @@ public partial class MainWindow : Window
 
     private void OnOpenLibrary(object? sender, RoutedEventArgs e) => OpenLibrary();
 
+    private bool _sectionEditorOpen; // Ctrl+E again while it is open (QDialog::exec() is modal)
+
     private async void OpenSectionEditor()
     {
-        if (sidePanel.SongFileName.Length == 0)
+        if (_sectionEditorOpen)
+            return;
+        string songFile = sidePanel.SongFileName;
+        if (songFile.Length == 0)
         {
             await MessageDialog.Information(this, Strings.Tr("Section Editor"), Strings.Tr("First open a song."));
             return;
@@ -686,16 +691,60 @@ public partial class MainWindow : Window
         topBar.StopMuiscPlaying();
         // the editor plays through the same MIDI output, so the conductor must not run
         _glWidget.StopTimerEvent();
-        await NotPortedYet(Strings.Tr("Section Editor")); // GuiSectionEditor: phase 5
-        sidePanel.ReloadPartsAfterEditing();
-        lock (_sync)
+        _sectionEditorOpen = true;
+        try
         {
-            // the editor may have played with the volumes of the song: put back those of the side panel
-            _song.BoostVolume(_song.BoostVolumeValue);
-            _song.PianoVolume(_song.PianoVolumeValue);
+            SectionEditor editor;
+            long selectedPartId = sidePanel.SelectedPartId;
+            lock (_sync)
+            {
+                TrackList trackList = _song.TrackList;
+                // the C++ passes m_song as the device: CConductor is a CMidiDevice
+                editor = new SectionEditor(_library, songFile, _song.SongTitle, _midiDevice, _song.GetSpeed(),
+                                           trackList.GetAllChannelProgramNames(), trackList.GetAllChannels(),
+                                           _song.ActiveChannel, this);
+            }
+            if (!editor.IsValid)
+            {
+                await MessageDialog.Warning(this, Strings.Tr("Section Editor"),
+                    Strings.Tr("The MIDI file \"%1\" cannot be read.", songFile.Replace('/', Path.DirectorySeparatorChar)));
+            }
+            else
+            {
+                bool loopActive;
+                BarPosition playFrom, playUpto;
+                lock (_sync)
+                {
+                    loopActive = _song.IsLoopActive;
+                    playFrom = _song.PlayFrom;
+                    playUpto = _song.PlayUpto;
+                }
+                editor.SetInitialSelection(selectedPartId, loopActive, playFrom, playUpto);
+                if (await editor.ShowDialog<bool?>(this) == true)
+                {
+                    // the instrument chosen in the editor, then the section
+                    sidePanel.SelectInstrument(editor.PractiseChannel);
+                    if (editor.PractisePartId >= 0)
+                        sidePanel.PractisePart(editor.PractisePartId);
+                    else
+                        sidePanel.PractiseSelection(editor.PractiseStart, editor.PractiseEnd);
+                }
+                else
+                    sidePanel.ReloadPartsAfterEditing();
+                lock (_sync)
+                {
+                    // the editor may have played with the volumes of the song: put back those of the side panel
+                    _song.BoostVolume(_song.BoostVolumeValue);
+                    _song.PianoVolume(_song.PianoVolumeValue);
+                }
+            }
         }
-        _midiDevice.FlushMidiInput();
-        _glWidget.StartTimerEvent();
+        finally
+        {
+            _sectionEditorOpen = false;
+            _midiDevice.FlushMidiInput();
+            _glWidget.StartTimerEvent();
+        }
     }
 
     private void OnOpenSectionEditor(object? sender, RoutedEventArgs e) => OpenSectionEditor();

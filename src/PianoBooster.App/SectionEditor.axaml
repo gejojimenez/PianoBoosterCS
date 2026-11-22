@@ -1,0 +1,146 @@
+<!-- Ported from GuiSectionEditor.cpp of PianoBooster (C++), which builds its widgets in code (it
+     has no .ui): the names are those of its members without "m_". The QGroupBox are Border with a
+     title, as in the side panel. GPLv3. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:PianoBooster.App"
+        x:Class="PianoBooster.App.SectionEditor"
+        Title="Section Editor" Width="1100" Height="700" MinWidth="700" MinHeight="450"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Border.group">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="TextBlock.groupTitle">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="StackPanel#tools > TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid#selectionGrid > TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="9">
+    <!-- the tools above the views -->
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+      <TextBlock x:Name="legend" DockPanel.Dock="Right" VerticalAlignment="Center">
+        <Run Text="■" Foreground="#2870d8" /><Run x:Name="legendRight" Text=" Right hand   " />
+        <Run Text="■" Foreground="#239650" /><Run x:Name="legendLeft" Text=" Left hand   " />
+        <Run Text="■" Foreground="#a5a5a5" /><Run x:Name="legendOthers" Text=" Others" />
+      </TextBlock>
+      <StackPanel x:Name="tools" Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Zoom:" />
+        <Button x:Name="zoomOutButton" Content="−" MinWidth="34" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Zoom out (Ctrl + mouse wheel)" Click="OnZoomOutButtonClicked" />
+        <Button x:Name="zoomInButton" Content="+" MinWidth="34" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Zoom in (Ctrl + mouse wheel)" Click="OnZoomInButtonClicked" />
+        <Button x:Name="fitSongButton" Content="Whole Song" ToolTip.Tip="Show the whole song"
+                Click="OnFitSongButtonClicked" />
+        <Button x:Name="fitSelectionButton" Content="Selection" ToolTip.Tip="Show the whole selection"
+                Click="OnFitSelectionButtonClicked" />
+        <TextBlock Text="Snap to:" Margin="16,0,0,0" />
+        <ComboBox x:Name="snapCombo" MinWidth="120" VerticalAlignment="Center"
+                  ToolTip.Tip="What the start and the end of the selection go to when they are dragged" />
+        <TextBlock Text="Instrument:" Margin="16,0,0,0" />
+        <ComboBox x:Name="instrumentCombo" VerticalAlignment="Center"
+                  ToolTip.Tip="The instrument (MIDI channel) to practise: its notes are shown in colour, by hand. &quot;Practise&quot; also chooses it in the practice window." />
+        <CheckBox x:Name="otherPartsCheck" Content="Other instruments" IsChecked="True"
+                  ToolTip.Tip="Show the notes of the other instruments too, in grey (the drums are not shown)" />
+      </StackPanel>
+    </DockPanel>
+
+    <app:SongOverviewControl x:Name="overview" DockPanel.Dock="Top" Margin="0,0,0,4" />
+
+    <!-- the bottom: sections, selection, listening and the end buttons -->
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="2*,2*,Auto,Auto">
+      <Border Classes="group" Grid.Column="0">
+        <DockPanel>
+          <TextBlock Classes="groupTitle" Text="Sections" DockPanel.Dock="Top" />
+          <StackPanel DockPanel.Dock="Right" Spacing="4" Margin="6,0,0,0">
+            <Button x:Name="newButton" Content="New..." HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Save the selection as a new section" Click="OnNewButtonClicked" />
+            <Button x:Name="saveButton" Content="Save" HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Save the changes to the start and end of the chosen section" Click="OnSaveButtonClicked" />
+            <Button x:Name="renameButton" Content="Rename..." HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Rename the chosen section" Click="OnRenameButtonClicked" />
+            <Button x:Name="deleteButton" Content="Delete" HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Delete the chosen section" Click="OnDeleteButtonClicked" />
+          </StackPanel>
+          <Border BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                  MinWidth="220" MaxHeight="140" VerticalAlignment="Top">
+            <ListBox x:Name="partList" SelectionMode="Single" BorderThickness="0" Height="132"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+          </Border>
+        </DockPanel>
+      </Border>
+
+      <Border Classes="group" Grid.Column="1">
+        <StackPanel>
+          <TextBlock Classes="groupTitle" Text="Selection" />
+          <Grid x:Name="selectionGrid" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto"
+                RowSpacing="4" HorizontalAlignment="Left">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Starts at:" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="bar" />
+            <NumericUpDown x:Name="startBarSpin" Grid.Row="0" Grid.Column="2" Increment="1" FormatString="0"
+                           MinWidth="110" Margin="0,0,8,0" ToolTip.Tip="The bar where the selection starts" />
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="beat" />
+            <NumericUpDown x:Name="startBeatSpin" Grid.Row="0" Grid.Column="4" Increment="1" FormatString="0.00"
+                           Minimum="1" Maximum="4.99" MinWidth="110"
+                           ToolTip.Tip="The beat where the selection starts (1 is the start of the bar)" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Ends before:" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="bar" />
+            <NumericUpDown x:Name="endBarSpin" Grid.Row="1" Grid.Column="2" Increment="1" FormatString="0"
+                           MinWidth="110" Margin="0,0,8,0"
+                           ToolTip.Tip="The selection ends just before this bar and beat: they are not included" />
+            <TextBlock Grid.Row="1" Grid.Column="3" Text="beat" />
+            <NumericUpDown x:Name="endBeatSpin" Grid.Row="1" Grid.Column="4" Increment="1" FormatString="0.00"
+                           Minimum="1" Maximum="4.99" MinWidth="110"
+                           ToolTip.Tip="The selection ends just before this bar and beat: they are not included" />
+          </Grid>
+          <TextBlock x:Name="infoLabel" TextWrapping="Wrap" MinWidth="260" Margin="0,6,0,0" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="group" Grid.Column="2">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="groupTitle" Text="Listen" />
+          <Button x:Name="playButton" HorizontalAlignment="Stretch" Click="OnPlayButtonClicked"
+                  ToolTip.Tip="Listen to the selection, or to the song from the place shown if nothing is selected (Space)">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Image x:Name="playButtonImage" Source="avares://PianoBooster/images/play.png" Width="16" Height="16" />
+              <TextBlock x:Name="playButtonText" Text="Play" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <CheckBox x:Name="repeatCheck" Content="Repeat" ToolTip.Tip="Start the selection again when it ends" />
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Speed:" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="speedSpin" Minimum="20" Maximum="200" Increment="5" Value="100"
+                           FormatString="0" MinWidth="100" VerticalAlignment="Center" />
+            <TextBlock Text="%" VerticalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <StackPanel Grid.Column="3" Spacing="4">
+        <Button x:Name="practiseButton" Content="Practise" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Close the editor and practise the selection, repeating it" Click="OnPractiseButtonClicked" />
+        <Button x:Name="closeButton" Content="Close" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                Click="OnCloseButtonClicked" />
+      </StackPanel>
+    </Grid>
+
+    <TextBlock x:Name="hint" DockPanel.Dock="Bottom" TextWrapping="Wrap" Margin="0,4,0,8"
+               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+               Text="Drag on the ruler or on the notes to select a stretch of the song, and drag its edges to change it. The mouse wheel scrolls; click a section on the strip under the ruler to choose it." />
+
+    <app:PianoRollControl x:Name="roll" />
+  </DockPanel>
+</Window>
