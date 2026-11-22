@@ -61,7 +61,8 @@ Librerías previstas (todas compatibles con GPLv3):
 ```
 PianoBoosterCS/
 ├─ PianoBooster.sln
-├─ Directory.Build.props        TargetFramework, Nullable, LangVersion
+├─ Directory.Build.props        TargetFramework, Nullable, LangVersion, Version
+├─ music/BoosterMusicBooks.zip  El curso de música del C++, junto al ejecutable (fase 6.3)
 ├─ src/
 │  ├─ PianoBooster.Core         Sin interfaz: MIDI, Song, Conductor, Rating, SongMap...
 │  ├─ PianoBooster.Midi         IMidiInput/IMidiOutput + implementaciones          (fase 2)
@@ -76,6 +77,7 @@ PianoBoosterCS/
 │  └─ PianoBooster.App.Tests    xUnit: traducciones (ts-to-resx.ps1 y Strings)          (fase 6.1)
 └─ tools/
    ├─ ts-to-resx.ps1            Traducciones del C++ (.ts) → src/PianoBooster.App/translations/*.resx (fase 6.1)
+   ├─ package-windows.ps1       Zip portátil para Windows: dotnet publish autocontenido + FluidSynth + SoundFont (fase 6.3)
    ├─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
    ├─ MakeSyntheticMidi/        Escribe los MIDI sintéticos de las pruebas
    ├─ PlaySong/                 Consola: reproducir (listen) o tocar (follow...) un MIDI  (fase 2)
@@ -141,7 +143,8 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | **5** | **hecha** (22 nov 2026) | Las 8 subfases (§11). Ya no queda ningún diálogo "not ported yet" en la app |
 | 6.1 | **hecha** (22 nov 2026) | `tools/ts-to-resx.ps1`, 18 `Strings.<idioma>.resx` (satélites) y `Strings` con `ResourceManager`. Proyecto nuevo `PianoBooster.App.Tests`: 5 pruebas nuevas en verde y las 128 anteriores sin cambios. Ver §12.1 |
 | 6.2 | **hecha** (22 nov 2026) | `General/lang` aplicado en vivo (`RefreshTranslate`, `Strings.TranslateTree`), combo de idiomas con los satélites, textos de Rendering/Core con su contexto. 3 pruebas nuevas en verde y las 133 anteriores sin cambios; probado en la app. Ver §12.2 |
-| 6 | en curso | Subfases en §12 |
+| 6.3 | **hecha** (22 nov 2026) | `tools/package-windows.ps1` (sustituye a `tools/package-windows.sh`): zip de 184 MB con el runtime, FluidSynth y `FluidR3_GM.sf2`. Sin pruebas nuevas; las 136 en verde (arreglada una carrera de `ConductorThreadTests`); probado el zip descomprimido. Ver §12.3 |
+| **6** | **hecha** (22 nov 2026) | Las 3 subfases (§12). El port está completo |
 
 ## 7. Fase 1: lo hecho
 
@@ -1134,3 +1137,46 @@ sea `es`/`de`, macOS/Linux y escalas distintas de 100 %.
 - **Decisiones a confirmar antes de 6.3:** (a) si el zip lleva una SoundFont por defecto (p. ej. `FluidR3_GM.sf2`,
   licencia MIT, ~141 MB; la de `C:\Users\...\Music\Soundfonts` de este equipo) o solo con `-SoundFont`; (b) si
   `tools/package-windows.ps1` es lo único o también hace falta un `.sh`.
+
+#### Lo hecho (6.3)
+
+Decisiones: (a) el zip lleva `FluidR3_GM.sf2` por defecto (`-NoSoundFont` para no llevarla); (b) solo `.ps1` (el `.sh` del
+C++ era para MSYS2; el port se empaqueta desde PowerShell de Windows).
+
+| Fichero | Origen C++ | Notas |
+|---|---|---|
+| `tools/package-windows.ps1` | `tools/package-windows.sh` | PowerShell 5.1. `-OutDir` (por defecto `artifacts\package`, ignorado por git), `-SoundFont`, `-NoSoundFont`, `-FluidSynthDir` (`C:\msys64\ucrt64\bin`). Pasos de abajo |
+| `music/BoosterMusicBooks.zip` (+ `README.md`) | `music/BoosterMusicBooks.zip` | Copiado (512 KB) para no depender del C++ |
+| `App/PianoBooster.App.csproj` | `src/CMakeLists.txt` (`INSTALL ... DESTINATION .`) | `BoosterMusicBooks.zip` junto al ejecutable (también al compilar) |
+| `README.md` | | Fases 5 y 6 hechas, cómo hacer el zip, nuevos ficheros |
+| `tests/PianoBooster.Midi.Tests/MidiTests.cs` | | `ConductorThreadTests.GivesWholeMillisecondsKeepingTheRest`: `clock.Restart()` antes de `thread.Start()`. Con todas las pruebas a la vez fallaba a veces (el hilo contaba 20–30 ms antes que el reloj de la prueba); 4 ejecuciones seguidas en verde |
+
+- Pasos del script: (1) `dotnet publish src\PianoBooster.App -c Release -r win-x64 --self-contained true
+  -p:PublishReadyToRun=true -p:DebugType=None` a una carpeta (no un solo fichero, sin recortar); comprueba que están
+  `PianoBooster.exe`, `BoosterMusicBooks.zip`, `fonts\DejaVuSans.ttf`, `translations\langs.json` y los satélites; borra
+  los `.pdb` nativos de Skia/HarfBuzz (~105 MB) y el `.dylib` de DryWetMIDI. (2) `README.md`, `LICENSE` (GPLv3) y
+  `NOTICE` (el C++ copiaba `license.txt`, `gplv3.txt` y `Changelog.txt`; el port no tiene changelog propio). (3)
+  `libfluidsynth-3.dll` y sus dependencias de MSYS2 con `objdump -p` en bucle: 18 DLL (`libsndfile-1`, `SDL3`,
+  `libportaudio`, `libgomp-1`, `libstdc++-6`, `libFLAC`, `libvorbis`, `libopus`, `libmpg123-0`...). (4) La SoundFont en
+  `soundfont/` con un `README.txt` hecho con el bloque INFO del fichero (nombre, autor, copyright, fecha, comentario);
+  si el comentario dice "not redistribute", avisa. (5) `Compress-Archive`.
+- Resultado: `PianoBooster-1.3.11-win64.zip`, 184 MB con la SoundFont (59 MB sin ella); 273 ficheros, 18 carpetas de
+  idioma.
+- Probado: el zip descomprimido en el scratchpad, arrancado con `--settings=` en el scratchpad (`Midi/Output` vacío y
+  `LastSoundFontDir` puesto, para que `SetupDefaultSoundFont` no elija FluidSynth: no sonó nada). La lista de módulos del
+  proceso: runtime, Skia, SQLite, `libfluidsynth-3.dll`, `SDL3.dll`, `libsndfile-1.dll`, todos de la carpeta
+  descomprimida (nada de `C:\msys64`). Partitura, español (satélites) y diálogo MIDI con la pestaña FluidSynth.
+  `-NoSoundFont` en otra carpeta. 0 errores; 136 pruebas en verde.
+
+**La SoundFont de este equipo:** su bloque INFO dice `ICOP: Frank Wen 2000-2002` e `ICMT: DO NOT REDISTRIBUTE ANY OF
+THESE SAMPLES.` (hay versiones posteriores de FluidR3_GM con licencia MIT, p. ej. la de Debian). Antes de repartir el zip
+hay que comprobar que se puede, o usar otra (`-SoundFont`) o ninguna (`-NoSoundFont`). El script lo avisa.
+
+**Como en el C++:** en Windows nadie descomprime `BoosterMusicBooks.zip` (el C++ dice que lo hace el instalador, pero el
+zip portátil no tiene instalador): el curso de música no aparece si no se ha instalado antes.
+
+**Aviso de compilación que ya estaba:** `CS0414` en `Conductor._lastSound` (Core, sin cambios desde la fase 2) sale cada
+vez que Core se recompila (también en `dotnet publish`). No es nuevo de la fase 6.
+
+**Sin probar:** elegir FluidSynth y la SoundFont incluida con sonido (no debía sonar nada), un Windows sin MSYS2 ni .NET
+instalados (este equipo tiene los dos; los módulos sí salen de la carpeta del zip), Windows en ARM y macOS/Linux.

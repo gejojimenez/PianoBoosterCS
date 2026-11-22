@@ -110,8 +110,8 @@ public class ConductorThreadTests
             return calls == 10 ? EventBits.NewBarNumber : 0u;
         });
         Cfg.SetDefaults(); // tickRate 4 ms
+        clock.Restart(); // before Start(): the thread counts from there (after it, a busy machine made it fail)
         thread.Start();
-        clock.Restart();
         Thread.Sleep(1000);
         thread.Stop();
         double elapsedMs = clock.Elapsed.TotalMilliseconds;

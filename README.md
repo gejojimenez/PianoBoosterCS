@@ -49,8 +49,8 @@ The full plan, the decisions and the state of each phase are in [PORTING.md](POR
 | 2 | MIDI input/output and sound (FluidSynth), real-time thread, console player | done |
 | 3 | Practice window: the scrolling score drawn with Skia | done |
 | 4 | Main window: side panel, top bar, settings | done |
-| 5 | Song library, sections, section editor, dialogs | |
-| 6 | Translations and Windows package | |
+| 5 | Song library, sections, section editor, dialogs | done |
+| 6 | Translations and Windows package | done |
 
 ## Building
 
@@ -66,18 +66,31 @@ The reference outputs of the C++ code are already in `tests/PianoBooster.Core.Te
 To make them again (only needed if the scenarios or the dump tools change), see
 [tools/RefDump/README.md](tools/RefDump/README.md); it needs MSYS2 and the sources of the fork.
 
+A portable zip for Windows (the program with the .NET runtime, FluidSynth and a SoundFont), in
+`artifacts/package`; it needs FluidSynth from MSYS2 (`pacman -S mingw-w64-ucrt-x86_64-fluidsynth`) and
+`FluidR3_GM.sf2` (in `Music\Soundfonts` of the user, or given with `-SoundFont`; `-NoSoundFont` for none):
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-windows.ps1
+```
+
+The translations come from the `.ts` files of the C++ code: `tools/ts-to-resx.ps1` makes them again.
+
 ## Repository layout
 
 ```
 src/PianoBooster.Core         the musical core (no interface)
 src/PianoBooster.Midi         MIDI devices (DryWetMIDI, FluidSynth) and the conductor thread
 src/PianoBooster.Rendering    the scrolling score drawn with SkiaSharp
-src/PianoBooster.Data         the settings file (JSON); the song library comes in phase 5
+src/PianoBooster.Data         the settings file (JSON) and the song library (SQLite)
 src/PianoBooster.App          the application (Avalonia)
 tests/PianoBooster.*.Tests    the tests; Core.Tests has the C# twin of RefDump and the test MIDI files
 tools/RefDump                 the original C++ core writing the reference outputs
 tools/MakeSyntheticMidi       writes the synthetic test MIDI files
 tools/PlaySong, ScoreWindow   a console player and a bare score window (measures the smoothness)
+tools/ts-to-resx.ps1          the translations of the C++ code (.ts) to .resx
+tools/package-windows.ps1     the portable zip for Windows
+music/BoosterMusicBooks.zip   the music course of the C++ code, installed next to the program
 ```
 
 ## License

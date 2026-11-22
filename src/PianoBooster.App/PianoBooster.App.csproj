@@ -35,6 +35,8 @@
     <!-- translations/Strings.<culture>.resx (made from translations/*.ts of the C++ code by
          tools/ts-to-resx.ps1) are embedded by default: one satellite assembly per language,
          <culture>/PianoBooster.resources.dll, read by Strings -->
+    <!-- music/BoosterMusicBooks.zip of the C++ code, installed next to the program (as on Windows in C++) -->
+    <None Include="..\..\music\BoosterMusicBooks.zip" Link="BoosterMusicBooks.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
