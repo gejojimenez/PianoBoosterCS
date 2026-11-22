@@ -642,9 +642,36 @@ public partial class MainWindow : Window
     {
         topBar.StopMuiscPlaying();
         _glWidget.StopTimerEvent();
-        await NotPortedYet(Strings.Tr("Library")); // GuiLibraryDialog: phase 5
-        _midiDevice.FlushMidiInput();
-        _glWidget.StartTimerEvent();
+        try
+        {
+            if (_library == null)
+            {
+                // only without a settings file (the C++ always has a library)
+                await MessageDialog.Information(this, Strings.Tr("Library"), Strings.Tr("The library is not available."));
+                return;
+            }
+
+            // the first time, start the library with the Booster Music course
+            if (!_settings.Value("Library/Initialised", false))
+            {
+                string books = Settings.BoosterMusicBooksFolder();
+                if (Directory.Exists(books))
+                    _library.AddLocation(books);
+                _settings.SetValue("Library/Initialised", true);
+            }
+
+            var library = new LibraryDialog(_library, _settings.GetCurrentSongLongFileName());
+            if (await library.ShowDialog<bool?>(this) == true && library.SelectedSong.Length > 0)
+            {
+                _settings.OpenSongFile(library.SelectedSong);
+                SetCurrentFile(library.SelectedSong);
+            }
+        }
+        finally
+        {
+            _midiDevice.FlushMidiInput();
+            _glWidget.StartTimerEvent();
+        }
     }
 
     private void OnOpenLibrary(object? sender, RoutedEventArgs e) => OpenLibrary();

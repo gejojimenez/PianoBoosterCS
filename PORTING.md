@@ -126,7 +126,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 3 | **hecha** (22 nov 2026) | `PianoBooster.Rendering` + `tools/ScoreWindow`; 10 pruebas nuevas en verde y las 86 anteriores sin cambios. Fluidez 0,03 px (C++ 1.3.8: 0,24). Ver §9 |
 | 4 | **hecha** (22 nov 2026) | `PianoBooster.App` + `PianoBooster.Data`; Avalonia 12.1.6. 8 pruebas nuevas en verde y las 96 anteriores sin cambios. Ver §10 |
 | 5.1 | **hecha** (22 nov 2026) | `PianoBooster.Data.Library` (Microsoft.Data.Sqlite 9.0.11, mismo `library.db`). 10 pruebas nuevas en verde y las 104 anteriores sin cambios. Ver §11.1 |
-| 5.2 | pendiente | `GuiLibraryDialog`. Necesita 5.1. Ver §11.2 |
+| 5.2 | **hecha** (22 nov 2026) | `LibraryDialog` (`GuiLibraryDialog`). Sin pruebas nuevas (es interfaz): las 114 siguen en verde; probado en la app. Ver §11.2 |
 | 5.3 | pendiente | `SectionPlayer` + `GuiPianoRoll`. Ver §11.3 |
 | 5.4 | pendiente | `GuiSectionEditor`. Necesita 5.1 y 5.3. Ver §11.4 |
 | 5.5 | pendiente | `GuiMidiSetupDialog`. Ver §11.5 |
@@ -487,8 +487,7 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 
-- Diálogos que aún muestran "not ported yet (phase 5)": biblioteca (Ctrl+B y botón "Library..."),
-  editor de secciones (Ctrl+E), detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
+- Diálogos que aún muestran "not ported yet (phase 5)": editor de secciones (Ctrl+E), detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
   (Ctrl+P). El diálogo MIDI (Ctrl+S) es el provisional.
 
 ### Sin probar
@@ -586,6 +585,44 @@ texto, no automatizados) y macOS/Linux.
   (`Library/Initialised`, `CSettings::boosterMusicBooksFolder()`, ya en `Settings.BoosterMusicBooksFolder()`).
 - **C#:** `LibraryDialog.axaml(.cs)`; en `MainWindow.OpenLibrary()` sustituir `NotPortedYet`. El botón
   "Library..." del panel ya llama a `OpenLibrary()`.
+
+#### Lo hecho (5.2)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/LibraryDialog.axaml(.cs)` | `GuiLibraryDialog.*` | Mismos nombres sin `m_` (`sources`, `songs`, `search`, `openButton`, `removeLocationButton`) y métodos (`FillSources`, `SourceChanged`, `ShowSongs`, `FilterSongs`, `OpenSelected`...). Los roles de los items (`KIND_ROLE`, `PATH_ROLE`, `SORT_ROLE`) están en las clases `Source` y `SongRow` |
+| `App/MainWindow.axaml.cs` | `QtWindow::openLibrary()` | `Library/Initialised` (añade la carpeta del curso la primera vez), abre el diálogo y, si se acepta, `OpenSongFile` + `SetCurrentFile` |
+
+- **Las canciones** (`QTreeWidget` con columnas, que Avalonia no tiene y los paquetes instalados no traen
+  `DataGrid`): una cabecera de botones (clic = ordenar, otra vez = al revés, con ▲/▼) sobre un `ListBox`
+  virtualizado de filas (`SongRowView`, una `Grid` con las mismas columnas). El orden es estable y usa la
+  clave de orden si las dos filas la tienen, si no el texto (`SongItem::operator<`). `resizeColumnToContents`
+  mide los textos con `FormattedText`; el nombre se estira y la carpeta tiene 200. Filas alternas con
+  `:nth-child(2n)`.
+- **Las fuentes** (`TreeView`): las subcarpetas se añaden al desplegar (`TreeViewItem.ExpandedEvent`); hasta
+  entonces un hijo invisible hace de `ShowIndicator`.
+- Recorrido de carpetas como `QDir`/`QDirIterator`: sin ocultos, extensiones sin distinguir mayúsculas, sin
+  seguir enlaces a carpetas (reparse points), subcarpetas por nombre sin distinguir mayúsculas.
+- Probado en la app (`--settings=` en el scratchpad, sin sonido, con una carpeta de canciones de `TestData`
+  con subcarpetas y una ubicación inexistente): ubicaciones (la inexistente en gris), la canción actual en
+  negrita y seleccionada, favorito con clic en la estrella (se guarda), ordenar por duración, buscar (Open se
+  desactiva si la actual queda oculta), recientes (por fecha, descendente), favoritos, desplegar subcarpetas,
+  clic en el encabezado "Locations" (no cambia), flecha abajo desde "Recent" (salta a la primera ubicación),
+  quitar una ubicación (pregunta) y abrir con doble clic.
+
+**Diferencias deliberadas con el C++:**
+- El encabezado "Locations" se puede seleccionar en Avalonia: al hacerlo se vuelve a la fuente anterior (con
+  el ratón) o se salta por encima (con el teclado). El marco del foco del teclado se queda en el encabezado.
+- Las columnas no se pueden redimensionar a mano (en Qt la carpeta sí). El panel izquierdo empieza con 230
+  (su mínimo) y se cambia con un `GridSplitter`.
+- El recorrido de carpetas lista primero los ficheros de una carpeta y después sus subcarpetas; solo cambia
+  qué canciones entran si hay más de 5000.
+- Sin fichero de ajustes (no hay biblioteca) se muestra un aviso en lugar del diálogo.
+- El cursor de espera se pone en la ventana del diálogo (Qt: `setOverrideCursor`); como en C++, la lectura es
+  en el hilo de la interfaz.
+
+**Sin probar:** "Add Location..." (el selector de carpetas del sistema no se ha automatizado), carpetas con
+más de 5000 canciones, macOS/Linux.
 
 ### 11.3 `SectionPlayer` y piano roll
 

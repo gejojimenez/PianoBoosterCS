@@ -1,0 +1,71 @@
+<!-- Ported from GuiLibraryDialog.cpp of PianoBooster (C++), which builds its widgets in code (it
+     has no .ui). The QSplitter is a grid with a GridSplitter; the QTreeWidget of the songs is a
+     header of buttons (to sort) above a list of rows (see LibraryDialog.axaml.cs). GPLv3. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.LibraryDialog"
+        Title="Library" Width="1100" Height="620" MinWidth="500" MinHeight="300"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="ListBox#songs ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <!-- setAlternatingRowColors(true) -->
+    <Style Selector="ListBox#songs ListBoxItem:nth-child(2n)">
+      <Setter Property="Background" Value="#0C000000" />
+    </Style>
+    <Style Selector="Grid#songsHeader Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,0,1,0" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="4,3" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="9">
+    <!-- the QDialogButtonBox -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                Spacing="8" Margin="0,9,0,0">
+      <Button x:Name="openButton" Content="Open" MinWidth="80" IsDefault="True"
+              HorizontalContentAlignment="Center" Click="OnOpenButtonClicked" />
+      <Button x:Name="closeButton" Content="Close" MinWidth="80" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCloseButtonClicked" />
+    </StackPanel>
+
+    <Grid ColumnDefinitions="230,6,*">
+      <!-- left: where the songs come from -->
+      <DockPanel Grid.Column="0" MinWidth="230">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,6,*" Margin="0,6,0,0">
+          <Button x:Name="addButton" Grid.Column="0" Content="Add Location..." HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center" Click="OnAddButtonClicked"
+                  ToolTip.Tip="Add a folder with MIDI files to the library" />
+          <Button x:Name="removeLocationButton" Grid.Column="2" Content="Remove" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center" Click="OnRemoveLocationButtonClicked"
+                  ToolTip.Tip="Remove the selected location from the library (the files are not deleted)" />
+        </Grid>
+        <Border BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+          <TreeView x:Name="sources" SelectionMode="Single" />
+        </Border>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+      <!-- right: the songs -->
+      <DockPanel Grid.Column="2">
+        <TextBox x:Name="search" DockPanel.Dock="Top" Classes="clearButton" PlaceholderText="Search..."
+                 Margin="0,0,0,6" />
+        <Border BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+          <DockPanel>
+            <Grid x:Name="songsHeader" DockPanel.Dock="Top" />
+            <ListBox x:Name="songs" SelectionMode="Single" Padding="0" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+          </DockPanel>
+        </Border>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>
