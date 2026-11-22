@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The MIDI devices of PianoBooster: MIDI ports (DryWetMIDI, like MidiDeviceRt), the internal
+       FluidSynth synthesizer (P/Invoke, like MidiDeviceFluidSynth), the device that chooses
+       between them (MidiDevice) and the thread that runs the conductor. -->
+  <PropertyGroup>
+    <RootNamespace>PianoBooster.Midi</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PianoBooster.Core\PianoBooster.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Melanchall.DryWetMidi" Version="8.0.3" />
+  </ItemGroup>
+
+</Project>

@@ -68,9 +68,12 @@ PianoBoosterCS/
 │  ├─ PianoBooster.Data         Biblioteca SQLite, ajustes JSON                     (fase 5)
 │  └─ PianoBooster.App          Avalonia                                            (fase 4)
 ├─ tests/
-│  └─ PianoBooster.Core.Tests   xUnit: pruebas de referencia contra el C++
+│  ├─ PianoBooster.Core.Tests   xUnit: pruebas de referencia contra el C++
+│  └─ PianoBooster.Midi.Tests   xUnit: mensajes MIDI, FluidSynth sin SoundFont, hilo del Conductor
 └─ tools/
-   └─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
+   ├─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
+   ├─ MakeSyntheticMidi/        Escribe los MIDI sintéticos de las pruebas
+   └─ PlaySong/                 Consola: reproducir (listen) o tocar (follow...) un MIDI  (fase 2)
 ```
 
 **Hilos (a partir de la fase 2):**
@@ -112,8 +115,8 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | Fase | Estado | Notas |
 |---|---|---|
 | 1 | **hecha** (22 nov 2026) | 79 pruebas en verde: 72 escenarios idénticos al C++ y 7 unitarias. Ver §7 |
-| 2 | pendiente | Ver §8 |
-| 3 | pendiente | |
+| 2 | **hecha** (22 nov 2026) | `PianoBooster.Midi` + `tools/PlaySong`; 7 pruebas nuevas en verde y las 79 de la fase 1 sin cambios. Ver §8 |
+| 3 | pendiente | Ver §9 |
 | 4 | pendiente | |
 | 5 | pendiente | |
 | 6 | pendiente | |
@@ -181,21 +184,83 @@ proceso nuevo (lo usan las pruebas, que no se ejecutan en paralelo).
 
 - `Draw.cpp` no compila con `NO_USE_FTGL` (literales `ff`).
 - `CMidiDevice::openMidiPort(MIDI_INPUT)` asigna `m_selectedMidiOutputDevice` en lugar del de
-  entrada (revisar en la fase 2).
+  entrada (**corregido en la fase 2**, ver §8).
 - `CPiano` no inicializa `m_noteNameListLength` ni `m_rhythmTapping` en el constructor (sin efecto
   porque se llama a `clear()` antes de usarlos).
 
-## 8. Para retomar: fase 2
+## 8. Fase 2: lo hecho
 
-Leer este documento y `tools/RefDump/README.md`. Luego:
+### Comandos
 
-1. Proyecto `src/PianoBooster.Midi` con implementaciones de `IMidiDevice` (de `Interfaces.cs`):
-   - Entrada/salida con DryWetMIDI (`Melanchall.DryWetMidi`), equivalente a `MidiDeviceRt.cpp`
-     (lista de puertos, abrir/cerrar por nombre, la entrada en una cola como `Queue.h`).
-   - FluidSynth por P/Invoke, equivalente a `MidiDeviceFluidSynth.cpp` (unas 15 funciones; ajustes
-     `FluidSynth/*` de `Settings`), y un `MidiDevice` que elige entre ambos como `MidiDevice.cpp`.
-2. El hilo del Conductor (§3): llamar a `Song.Task(ms)` con ms enteros conservando el resto, como
-   `CGLView::updateMidiTask()`; la entrada MIDI llega en otro hilo a la cola.
-3. Un programa de consola que cargue un MIDI y lo reproduzca (`listen`) por el sintetizador, y que
-   permita tocar con un teclado MIDI (`follow`), mostrando aciertos y fallos en texto.
-4. Las pruebas de la fase 1 deben seguir en verde (el Core no debería cambiar).
+```powershell
+dotnet build PianoBooster.sln
+dotnet test PianoBooster.sln
+dotnet run --project tools\PlaySong -- --list
+dotnet run --project tools\PlaySong -- <fichero.mid> --soundfont <fichero.sf2>
+dotnet run --project tools\PlaySong -- <fichero.mid> --mode follow --in "0 - <teclado>" --out "1 - Microsoft GS Wavetable Synth"
+```
+
+`PlaySong --help` da todas las opciones (modo, mano, velocidad, nivel, desde/hasta compás, ganancia y
+frecuencia de FluidSynth, `--seconds` para parar solo). Sin `--in`, las teclas del PC hacen de
+piano como en el original (`Song.PcKeyPress`; la consola no avisa al soltar, así que la nota se
+suelta a los 250 ms). Escribe el compás, cada nota que toca el pianista y la puntuación cuando cambia.
+
+### Proyecto `src/PianoBooster.Midi`
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `MidiDeviceBase.cs` | `MidiDeviceBase.h` | Clase abstracta. `EventFromBytes`/`BytesFromEvent`: la conversión de `MidiDeviceRt.cpp`. `GetStringList`: las listas de `QSettings` (como `FluidSynth/SoundFont`) se guardan en un texto separado por `\|` |
+| `MidiDeviceDryWet.cs` | `MidiDeviceRt.*` | DryWetMIDI 8.0.3 (Windows y macOS). Nombres "índice - nombre" como en C++ (los ajustes guardados valen). La entrada llega en el hilo de DryWetMIDI a una `ConcurrentQueue`; se ignoran sysex, reloj y active sensing (lo que RtMidi ignora por defecto) |
+| `FluidSynthNative.cs` | — | P/Invoke a libfluidsynth 2.x. Busca la DLL en `PIANOBOOSTER_FLUIDSYNTH_DIR`, junto al programa, en el sistema y en `C:\msys64\{ucrt64,mingw64,clang64}\bin` (con ruta completa Windows carga sus dependencias de esa carpeta) |
+| `MidiDeviceFluidSynth.cs` | `MidiDeviceFluidSynth.*` | Mismos ajustes y valores por defecto (`sampleRateCombo` 22050, `bufferSizeCombo` 128, `bufferCountCombo` 4, `masterGainSpin` 80, `audioDriverCombo` fuera de Windows); reverb y chorus apagados (con la API anterior a 2.2 si falta la nueva). Solo aparece si hay SoundFont **y** se encuentra la biblioteca. `Translate` traduce "Internal Sound" |
+| `MidiDevice.cs` | `MidiDevice.*` | Implementa `IMidiDevice` del Core. `Init(settings)` = `init()` + `setQSettings()` |
+| `ConductorThread.cs` | `CGLView::updateMidiTask()`, `timerEvent()` | Ver abajo |
+
+**Hilo del Conductor.** `ConductorThread` llama a `Song.Task(ms)` cada `Cfg.TickRate` (4 ms) en un hilo
+de prioridad alta, con ms enteros y el resto en ns, como el C++. En Windows espera con un
+temporizador de alta resolución (`CREATE_WAITABLE_TIMER_HIGH_RESOLUTION`) y si no hay, con
+`Sleep` y `timeBeginPeriod(1)`. Medido en este equipo: mediana 4,02 ms entre llamadas, 99 % por
+debajo de 5 ms, máximo 7,5 ms, sin perder tiempo (la suma de ms coincide con el reloj).
+- El `Song` no es seguro entre hilos: todo lo demás (interfaz, dibujo, abrir puertos) usa
+  `ConductorThread.Invoke(...)` o `lock (SyncRoot)`. Es provisional: en la fase 3 el dibujo
+  debería leer una foto del estado (§3) para no bloquear al Conductor.
+- `TakeEventBits()` devuelve y borra los bits acumulados (el `m_eventBits` de `CGLView`, que el
+  dibujo lee una vez por fotograma). `EventBitsRaised` avisa desde el hilo del Conductor.
+- `UpdateMidiTask()` se puede llamar también desde el dibujo, como hace `paintGL()` en C++.
+- **Importante:** alguien tiene que llamar a `Score.DrawScrollingSymbols(true)` regularmente (en C++
+  lo hace el dibujo). Si no, la cola de la partitura se llena y `Song.Task` deja de leer el
+  fichero. `PlaySong` lo hace cada 16 ms.
+
+### Diferencias deliberadas con el C++
+
+- `CMidiDevice::openMidiPort()`: el C++ cierra el puerto (de entrada o de salida) del dispositivo
+  de *salida* y, al abrir la entrada, lo elige como dispositivo de salida. No se notaba porque
+  siempre se abre la entrada y luego la salida. En C# la entrada y la salida van por separado.
+- `CMidiDeviceRt` tiene un único `m_validConnection` para la entrada y la salida (cerrar la entrada
+  invalidaba la salida) y no marca el puerto como cerrado en `closeMidiPort()`. En C# la validez es
+  solo de la salida y cerrar deja el puerto a -1.
+- Si no se encuentra libfluidsynth, el sintetizador interno no se ofrece (en C++ es una opción de
+  compilación).
+
+### Sin probar
+
+- Con un teclado MIDI real (no hay ninguno conectado en este equipo; solo salidas:
+  `VirtualMIDISynth #1` y `Microsoft GS Wavetable Synth`). Probado `listen` con FluidSynth
+  (`FluidR3_GM.sf2`) y con GS Wavetable, y `follow` sin tocar (se para en el primer acorde).
+- Las teclas del PC en `PlaySong` (necesitan una consola interactiva).
+- macOS y Linux. En Linux DryWetMIDI no tiene dispositivos: queda pendiente RtMidi (API C) por
+  P/Invoke detrás de `MidiDeviceBase`.
+
+## 9. Para retomar: fase 3
+
+Leer este documento. Luego, ventana de práctica con Skia (`src/PianoBooster.Rendering` y una
+ventana Avalonia mínima de prueba):
+
+1. Port del dibujo de `Draw.cpp` (963 líneas), `Score.cpp`, `Scroll.cpp` y `Piano.cpp` (la parte de
+   OpenGL) sobre `SKCanvas`, con las equivalencias del §2. El modelo ya está en el Core
+   (`Scroll.Revision` dice cuándo regrabar el `SKPicture` de una ranura).
+2. `CGLView` (`GlView.cpp`, 658 líneas): `paintGL()`, barra de precisión, texto, número de compás,
+   con `TopLevel.RequestAnimationFrame`. Cada fotograma: `ConductorThread.TakeEventBits()`,
+   `UpdateMidiTask()` y `DrawScrollingSymbols(true)`.
+3. Sustituir el `lock` del dibujo por una foto del estado si bloquea al Conductor.
+4. Medir la fluidez como en la 1.3.8 (desviación respecto a un movimiento uniforme).

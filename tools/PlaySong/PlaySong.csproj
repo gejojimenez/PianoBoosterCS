@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Plays a MIDI file without an interface (phase 2 of the port): listen to it or play it
+       with a MIDI keyboard (or the PC keyboard) and see the notes and the rating as text. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PianoBooster.PlaySong</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PianoBooster.Core\PianoBooster.Core.csproj" />
+    <ProjectReference Include="..\..\src\PianoBooster.Midi\PianoBooster.Midi.csproj" />
+  </ItemGroup>
+
+</Project>
