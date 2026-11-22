@@ -1,0 +1,52 @@
+T Synthetic Time Signatures
+K -2
+L 0 0
+A 0
+C 1 2
+RT 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+PN 1LR Grand Piano
+PN 10 Drums
+CH 0
+CH 9
+TS 4 4
+BB 0 4
+BB 1 4
+BB 2 12
+BB 3 12
+BB 4 3
+BB 5 3
+BB 6 3
+BB 7 3
+BB 8 3
+BB 9 3
+BB 10 3
+BB 11 3
+BB 12 3
+BB 13 3
+BB 14 3
+BB 15 3
+BB 16 3
+BB 17 3
+BB 18 3
+BB 19 3
+BB 20 3
+BB 21 3
+BB 22 3
+BB 23 3
+BB 24 3
+BB 25 3
+BB 26 3
+BB 27 3
+BB 28 3
+BB 29 3
+BB 30 3
+BB 31 3
+BB 32 3
+BB 33 3
+BB 34 3
+BB 35 3
+BB 36 3
+BB 37 3
+BB 38 3
+BB 39 3
+Q 0 0

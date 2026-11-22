@@ -1,0 +1,82 @@
+# The reference scenarios: each one is run by the C++ RefDump (tools/RefDump/generate-references.ps1
+# writes reference/<name>.txt) and by the C# RefDriver (ReferenceTests), which must write the same.
+#
+# name  mode  midi file (in midi/)  [key=value ...]
+# modes: events, songmap, info, notation, play (see tools/RefDump/README.md)
+
+e-bc01   events    bc01-StartWithMiddleC.mid
+e-bc02   events    bc02-ChordOfCMajor.mid
+e-bc03   events    bc03-UpAndDown.mid
+e-bc04   events    bc04-ClairDeLaLune.mid
+e-bc05   events    bc05-ChordOfFMajor.mid
+e-bc06   events    bc06-DownAndUp.mid
+e-bc07   events    bc07-IntervalsRightHand.mid
+e-bc08   events    bc08-IntervalsLeftHand.mid
+e-bm01   events    bm01-ClairDeLaLune.mid
+e-bm02   events    bm02-LavendersBlue.mid
+e-bm03   events    bm03-SkipToMyLou.mid
+e-bm04   events    bm04-FrereJacques.mid
+e-bm05   events    bm05-ScarboroughFair.mid
+e-bm06   events    bm06-Greensleeves.mid
+e-bm07   events    bm07-AmazingGrace.mid
+e-sy01   events    sy01-TimeSigChanges.mid
+e-sy02   events    sy02-SharpKeyPpqn480.mid
+
+m-bc01   songmap   bc01-StartWithMiddleC.mid
+m-bc04   songmap   bc04-ClairDeLaLune.mid
+m-bc08   songmap   bc08-IntervalsLeftHand.mid
+m-bm03   songmap   bm03-SkipToMyLou.mid
+m-bm05   songmap   bm05-ScarboroughFair.mid
+m-bm06   songmap   bm06-Greensleeves.mid
+m-bm07   songmap   bm07-AmazingGrace.mid
+m-sy01   songmap   sy01-TimeSigChanges.mid
+m-sy02   songmap   sy02-SharpKeyPpqn480.mid
+
+i-bc01   info      bc01-StartWithMiddleC.mid
+i-bc02   info      bc02-ChordOfCMajor.mid
+i-bc03   info      bc03-UpAndDown.mid
+i-bc04   info      bc04-ClairDeLaLune.mid
+i-bc05   info      bc05-ChordOfFMajor.mid
+i-bc06   info      bc06-DownAndUp.mid
+i-bc07   info      bc07-IntervalsRightHand.mid
+i-bc08   info      bc08-IntervalsLeftHand.mid
+i-bm01   info      bm01-ClairDeLaLune.mid
+i-bm02   info      bm02-LavendersBlue.mid
+i-bm03   info      bm03-SkipToMyLou.mid
+i-bm04   info      bm04-FrereJacques.mid
+i-bm05   info      bm05-ScarboroughFair.mid
+i-bm06   info      bm06-Greensleeves.mid
+i-bm07   info      bm07-AmazingGrace.mid
+i-sy01   info      sy01-TimeSigChanges.mid
+i-sy02   info      sy02-SharpKeyPpqn480.mid
+
+n-bc01   notation  bc01-StartWithMiddleC.mid
+n-bc02   notation  bc02-ChordOfCMajor.mid
+n-bc04   notation  bc04-ClairDeLaLune.mid
+n-bc05   notation  bc05-ChordOfFMajor.mid
+n-bc08   notation  bc08-IntervalsLeftHand.mid
+n-bm02   notation  bm02-LavendersBlue.mid
+n-bm03   notation  bm03-SkipToMyLou.mid
+n-bm04   notation  bm04-FrereJacques.mid
+n-bm05   notation  bm05-ScarboroughFair.mid
+n-bm06   notation  bm06-Greensleeves.mid
+n-bm07   notation  bm07-AmazingGrace.mid
+n-sy01   notation  sy01-TimeSigChanges.mid
+n-sy02   notation  sy02-SharpKeyPpqn480.mid
+
+p01      play      bm04-FrereJacques.mid       mode=follow steps=20000
+p02      play      bm06-Greensleeves.mid       mode=follow steps=12000
+p03      play      bm07-AmazingGrace.mid       mode=along steps=12000
+p04      play      bm05-ScarboroughFair.mid    mode=listen steps=4000
+p05      play      bm03-SkipToMyLou.mid        mode=follow hand=right skill=1 speed=0.8 followErrors=1 steps=10000
+p06      play      bc02-ChordOfCMajor.mid      mode=follow hand=left transpose=2 steps=10000
+p07      play      bc05-ChordOfFMajor.mid      mode=rhythm steps=10000
+p08      play      bm01-ClairDeLaLune.mid      mode=follow from=2 upto=4 steps=8000
+p09      play      bm02-LavendersBlue.mid      mode=follow trail=1 markers=1 latency=50 steps=10000
+p10      play      bc07-IntervalsRightHand.mid mode=along hand=right speed=1.5 boost=30 piano=-20 steps=8000
+p11      play      sy01-TimeSigChanges.mid     mode=follow trail=1 steps=8000
+p12      play      sy01-TimeSigChanges.mid     mode=along from=2.5 upto=5 steps=8000
+p13      play      sy02-SharpKeyPpqn480.mid    mode=follow followErrors=1 transpose=-3 steps=8000
+p14      play      bc01-StartWithMiddleC.mid   mode=follow skill=0 wrongEvery=2 boost=-40 piano=40 mute=0 steps=10000
+p15      play      bm06-Greensleeves.mid       mode=rhythm hand=right steps=5000
+p16      play      sy01-TimeSigChanges.mid     mode=listen steps=4000

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The musical logic of PianoBooster, without any interface: reading MIDI files, following
+       the pianist, scoring, and the model of the score. Ported from the C++ sources. -->
+  <PropertyGroup>
+    <RootNamespace>PianoBooster.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PianoBooster.Core.Tests" />
+  </ItemGroup>
+
+</Project>

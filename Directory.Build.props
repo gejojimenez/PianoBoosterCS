@@ -1,0 +1,14 @@
+<Project>
+  <!-- Common settings of all the projects of the port. The .NET version is set only here. -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Authors>PianoBooster contributors</Authors>
+    <Copyright>Copyright (c) 2008-2026 L. J. Barman and the PianoBooster contributors</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <Version>1.3.11</Version>
+  </PropertyGroup>
+</Project>

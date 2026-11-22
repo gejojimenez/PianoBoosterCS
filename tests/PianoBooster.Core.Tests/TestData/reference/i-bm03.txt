@@ -1,0 +1,68 @@
+T Skip to My Lou
+K 0
+L 2 3
+A 3
+C 0 1
+RT -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+PN 3L Grand Piano
+PN 4R Grand Piano
+PN 8 Electric Bass (finger)
+PN 10 Drums
+PN 11 SynthStrings 1
+PN 12 Acoustic Bass
+PN 13 Acoustic Guitar (nylon)
+PN 14 Acoustic Guitar (nylon)
+PN 15 Acoustic Guitar (nylon)
+PN 16 Acoustic Guitar (nylon)
+CH 2
+CH 3
+CH 7
+CH 9
+CH 10
+CH 11
+CH 12
+CH 13
+CH 14
+CH 15
+TS 4 4
+BB 0 4
+BB 1 4
+BB 2 4
+BB 3 4
+BB 4 4
+BB 5 4
+BB 6 4
+BB 7 4
+BB 8 4
+BB 9 4
+BB 10 4
+BB 11 4
+BB 12 4
+BB 13 4
+BB 14 4
+BB 15 4
+BB 16 4
+BB 17 4
+BB 18 4
+BB 19 4
+BB 20 4
+BB 21 4
+BB 22 4
+BB 23 4
+BB 24 4
+BB 25 4
+BB 26 4
+BB 27 4
+BB 28 4
+BB 29 4
+BB 30 4
+BB 31 4
+BB 32 4
+BB 33 4
+BB 34 4
+BB 35 4
+BB 36 4
+BB 37 4
+BB 38 4
+BB 39 4
+Q 0 0
