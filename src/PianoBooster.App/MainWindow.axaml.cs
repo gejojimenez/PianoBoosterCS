@@ -32,7 +32,7 @@ public partial class MainWindow : Window
 
     private readonly CommandLine _commandLine = new();
     private readonly Settings _settings = null!;
-    private readonly ISongLibrary? _library;       // the library comes in phase 5
+    private readonly Library? _library;
     private readonly MidiDevice _midiDevice = null!;
     private readonly ConductorThread _conductor = null!;
     private readonly Song _song = null!;
@@ -61,7 +61,8 @@ public partial class MainWindow : Window
             ? SettingsStore.Open(Path.GetFullPath(file))
             : SettingsStore.OpenUserSettings();
         _settings = new Settings(this, store);
-        _library = null; // new CLibrary(folder of the settings): phase 5
+        // in the folder of the settings, where the C++ keeps its library.db (the same file is shared)
+        _library = store.Folder is string folder ? new Library(folder) : null;
         _settings.SetLibrary(_library);
         Title = "Piano Booster " + Program.Version; // the name is not translated
 
@@ -195,6 +196,7 @@ public partial class MainWindow : Window
         _conductor.Stop();
         _song.PlayMusic(false); // all the sounds off
         _midiDevice.Dispose();
+        _library?.Dispose(); // delete m_library
     }
 
     public void SongEventUpdated(uint eventBits)

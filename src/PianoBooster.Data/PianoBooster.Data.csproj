@@ -1,13 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The data of PianoBooster without an interface: the settings file (phase 4) and, in
-       phase 5, the library of songs (SQLite). -->
+  <!-- The data of PianoBooster without an interface: the settings file (phase 4) and the
+       library of songs (SQLite, phase 5.1). -->
   <PropertyGroup>
     <RootNamespace>PianoBooster.Data</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PianoBooster.Core\PianoBooster.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.11" />
   </ItemGroup>
 
 </Project>

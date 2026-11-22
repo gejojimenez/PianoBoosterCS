@@ -72,7 +72,7 @@ PianoBoosterCS/
 │  ├─ PianoBooster.Core.Tests   xUnit: pruebas de referencia contra el C++ (+ MidiInfo)
 │  ├─ PianoBooster.Midi.Tests   xUnit: mensajes MIDI, FluidSynth sin SoundFont, hilo del Conductor
 │  ├─ PianoBooster.Rendering.Tests  xUnit: fotogramas de canciones dibujados en un bitmap (PNG)
-│  └─ PianoBooster.Data.Tests   xUnit: fichero de ajustes e importación del .ini del C++
+│  └─ PianoBooster.Data.Tests   xUnit: ajustes, importación del .ini del C++ y biblioteca SQLite
 └─ tools/
    ├─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
    ├─ MakeSyntheticMidi/        Escribe los MIDI sintéticos de las pruebas
@@ -125,7 +125,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 2 | **hecha** (22 nov 2026) | `PianoBooster.Midi` + `tools/PlaySong`; 7 pruebas nuevas en verde y las 79 de la fase 1 sin cambios. Ver §8 |
 | 3 | **hecha** (22 nov 2026) | `PianoBooster.Rendering` + `tools/ScoreWindow`; 10 pruebas nuevas en verde y las 86 anteriores sin cambios. Fluidez 0,03 px (C++ 1.3.8: 0,24). Ver §9 |
 | 4 | **hecha** (22 nov 2026) | `PianoBooster.App` + `PianoBooster.Data`; Avalonia 12.1.6. 8 pruebas nuevas en verde y las 96 anteriores sin cambios. Ver §10 |
-| 5.1 | pendiente | Biblioteca SQLite (`Library`). Ver §11.1 |
+| 5.1 | **hecha** (22 nov 2026) | `PianoBooster.Data.Library` (Microsoft.Data.Sqlite 9.0.11, mismo `library.db`). 10 pruebas nuevas en verde y las 104 anteriores sin cambios. Ver §11.1 |
 | 5.2 | pendiente | `GuiLibraryDialog`. Necesita 5.1. Ver §11.2 |
 | 5.3 | pendiente | `SectionPlayer` + `GuiPianoRoll`. Ver §11.3 |
 | 5.4 | pendiente | `GuiSectionEditor`. Necesita 5.1 y 5.3. Ver §11.4 |
@@ -490,10 +490,6 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 - Diálogos que aún muestran "not ported yet (phase 5)": biblioteca (Ctrl+B y botón "Library..."),
   editor de secciones (Ctrl+E), detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
   (Ctrl+P). El diálogo MIDI (Ctrl+S) es el provisional.
-- **Sin biblioteca** (`ISongLibrary` es `null`, como `m_library == nullptr` en C++): no se guardan la
-  mano, la velocidad ni los canales de cada canción, ni la última canción de cada carpeta, ni se
-  importan los `pb.cfg`; las secciones del panel lateral están deshabilitadas. El código que los usa
-  ya está portado y comprueba `_library != null`.
 
 ### Sin probar
 
@@ -552,6 +548,37 @@ es independiente.
   carpeta, importación de `pb.cfg` y las secciones del panel lateral (añadir, actualizar, renombrar, borrar).
 - Pruebas en `tests/PianoBooster.Data.Tests` (base temporal): canciones, secciones, ajustes por canción,
   canción movida (mismo hash), copia del `library.db` del C++.
+
+#### Lo hecho (5.1)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `Data/Library.cs` | `Library.*` (`CLibrary`) | Microsoft.Data.Sqlite 9.0.11, una conexión abierta mientras vive (sin *pooling*, para que el fichero se cierre con `Dispose`). Mismo esquema, `user_version = 3` y las mismas consultas. `MidiFileFilters`, `NormalisePath` y `FileHash` son estáticos aquí |
+| `Core/LibraryTypes.cs` | `Library.h` | Nuevo `LibrarySong` (`CLibrarySong`; `LastOpened` es `DateTime?`, `null` = `QDateTime` inválido). `ISongLibrary` tiene ya todo `CLibrary`: `IsOpen`, ubicaciones, `SetFavourite`, `StoreInfo`, `Song`, `Songs`, `Favourites`, `Recent` |
+| `App/MainWindow.axaml.cs` | `QtWindow.cpp` | `new Library(store.Folder)` (la carpeta del fichero de ajustes, como el C++); se cierra en `Shutdown()` (`delete m_library`). Desde ahora funcionan mano/velocidad/canales por canción, última canción de cada carpeta, importación de `pb.cfg` y las secciones del panel lateral |
+
+- Pruebas (`LibraryTests`, 10): rutas como Qt, SHA-1, ubicaciones y canciones, favoritos y recientes,
+  secciones, ajustes compartidos entre copias, canción movida, última canción de cada carpeta, lotes
+  (transacción) y reabrir, base de la versión 2 (añade las columnas) y **una copia** del `library.db`
+  del C++ de este equipo (17 canciones, 2 secciones: todo se lee, las fechas tienen el mismo formato
+  `yyyy-MM-ddTHH:mm:ss`, las rutas y los hash coinciden con los calculados aquí). Si no hay `library.db`
+  la última prueba no comprueba nada.
+- Probado en la app (`--settings=` en el scratchpad, sin sonido): crea su `library.db` junto al JSON,
+  guarda la canción abierta (título, compases, veces abierta) y la última canción de la carpeta; el
+  botón "+" de las secciones está habilitado.
+
+**Diferencias deliberadas con el C++:**
+- Los `?` de Qt (`addBindValue` en orden) pasan a `$1`, `$2`... (Microsoft.Data.Sqlite enlaza por nombre).
+- Un título o un hash vacíos se guardan como `NULL` (lo que hace Qt con un `QString` nulo; un `QString`
+  vacío pero no nulo sería `''`, lo que no cambia nada al leer).
+- `NormalisePath`: `Path.GetFullPath` + separadores `/`, sin `/` final y (en Windows) la letra de unidad
+  en mayúscula, como las rutas del `library.db` del C++. Fuera de Windows no se ha comparado con Qt.
+- `BeginBatch` con un lote ya abierto no hace nada (Qt: `transaction()` falla); `EndBatch` sin lote, tampoco.
+- Si no se puede abrir la base, `IsOpen` es `false` y todo devuelve vacío/por defecto (en C++ las consultas
+  fallan igual). Sin fichero de ajustes (solo memoria) no hay biblioteca.
+
+**Sin probar:** importar un `pb.cfg` real, añadir/renombrar/borrar secciones desde el panel (diálogos de
+texto, no automatizados) y macOS/Linux.
 
 ### 11.2 Diálogo de la biblioteca (necesita 5.1)
 

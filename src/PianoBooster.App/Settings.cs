@@ -4,7 +4,7 @@
 // The settings of the programme (the C++ CSettings, which is a QSettings), kept in a JSON file
 // with the same keys (PianoBooster.Data.SettingsStore). The settings of each song (hand, speed
 // and the MIDI channel of each hand) and the last song of each folder (book) are kept in the
-// library (ISongLibrary; the SQLite library comes in phase 5).
+// library (ISongLibrary, the SQLite PianoBooster.Data.Library).
 
 using System;
 using System.Collections.Generic;
