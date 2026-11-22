@@ -634,10 +634,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>A dialog of phase 5 that is not ported yet.</summary>
-    private Task NotPortedYet(string title) =>
-        MessageDialog.Information(this, title, "This dialog is not ported yet (phase 5 of the port).");
-
     private async void OpenLibrary()
     {
         topBar.StopMuiscPlaying();
@@ -778,8 +774,12 @@ public partial class MainWindow : Window
             _score.RefreshScroll();
     }
 
-    private async void OnShowSongDetailsDialog(object? sender, RoutedEventArgs e) =>
-        await NotPortedYet(Strings.Tr("Song Details")); // GuiSongDetailsDialog: phase 5
+    private async void OnShowSongDetailsDialog(object? sender, RoutedEventArgs e)
+    {
+        var songDetailsDialog = new SongDetailsDialog();
+        songDetailsDialog.Init(_song, _sync, _settings);
+        await songDetailsDialog.ShowDialog<bool?>(this);
+    }
 
     // showKeyboardSetup(): as in the C++, the conductor keeps running (the test buttons play through it)
     private async void OnShowKeyboardSetup(object? sender, RoutedEventArgs e)

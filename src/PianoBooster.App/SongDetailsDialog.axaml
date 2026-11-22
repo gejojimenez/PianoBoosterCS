@@ -1,0 +1,61 @@
+<!-- Ported from GuiSongDetailsDialog.ui of PianoBooster (C++): same control names. The QGroupBox
+     is a border with a title (as in SidePanel, MidiSetupDialog, KeyboardSetupDialog and
+     PreferencesDialog). GPLv3. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.SongDetailsDialog"
+        Title="Song Details" MinWidth="388" Height="265" MinHeight="220" SizeToContent="Width"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Border.group">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="TextBlock.groupTitle">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <!-- _2: the text takes the free height, then the group box and the buttons -->
+  <DockPanel Margin="9">
+    <!-- buttonBox: Ok | Cancel (Enter accepts and Esc rejects, as in a QDialog) -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                Margin="0,9,0,0">
+      <Button x:Name="okButton" Content="OK" MinWidth="80" IsDefault="True"
+              HorizontalContentAlignment="Center" Click="OnOkButtonClicked" />
+      <Button x:Name="cancelButton" Content="Cancel" MinWidth="80" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCancelButtonClicked" />
+    </StackPanel>
+
+    <Border DockPanel.Dock="Bottom" Classes="group" x:Name="groupBox_2" Margin="0,9,0,0">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="groupTitle" Text="Song Details" />
+        <TextBlock x:Name="label_3" Text="MIDI Channels for left and right hand piano parts:" />
+        <Grid x:Name="gridLayout" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+              ColumnSpacing="6" RowSpacing="4">
+          <TextBlock x:Name="label" Classes="label" Text="Right Hand MIDI Channel:" />
+          <ComboBox x:Name="rightHandChannelCombo" Grid.Column="1" MinWidth="180" HorizontalAlignment="Stretch"
+                    MaxDropDownHeight="400" SelectionChanged="OnRightHandChannelComboActivated" />
+          <TextBlock x:Name="label_2" Classes="label" Grid.Row="1" Text="Left Hand MIDI Channel:" />
+          <ComboBox x:Name="leftHandChannelCombo" Grid.Row="1" Grid.Column="1" MinWidth="150"
+                    HorizontalAlignment="Stretch" MaxDropDownHeight="400"
+                    SelectionChanged="OnLeftHandChannelComboActivated" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- songInfoText: a read-only QTextEdit -->
+    <Border BorderThickness="1" Background="White"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <SelectableTextBlock x:Name="songInfoText" TextWrapping="Wrap" Margin="4" Foreground="Black" />
+      </ScrollViewer>
+    </Border>
+  </DockPanel>
+</Window>

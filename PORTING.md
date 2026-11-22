@@ -134,7 +134,8 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.5 | **hecha** (22 nov 2026) | `MidiSetupDialog` (`GuiMidiSetupDialog`); se borra el provisional. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.5 |
 | 5.6 | **hecha** (22 nov 2026) | `KeyboardSetupDialog` (`GuiKeyboardSetupDialog`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.6 |
 | 5.7 | **hecha** (22 nov 2026) | `PreferencesDialog` (`GuiPreferencesDialog`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.7 |
-| 5.8 | pendiente | `GuiSongDetailsDialog`. Ver §11.8 |
+| 5.8 | **hecha** (22 nov 2026) | `SongDetailsDialog` (`GuiSongDetailsDialog`); se borra `NotPortedYet`. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.8 |
+| **5** | **hecha** (22 nov 2026) | Las 8 subfases (§11). Ya no queda ningún diálogo "not ported yet" en la app |
 | 6 | pendiente | |
 
 ## 7. Fase 1: lo hecho
@@ -488,7 +489,7 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 
-- Diálogo que aún muestra "not ported yet (phase 5)": detalles de la canción (Ctrl+D).
+- Nada: 5.8 portó el último diálogo (detalles de la canción) y se borró `NotPortedYet`.
 
 ### Sin probar
 
@@ -860,6 +861,39 @@ macOS/Linux (carpeta `translations`) y escalas distintas de 100 %.
 - **C++:** `GuiSongDetailsDialog.h/.cpp/.ui` (62 + 96 + 140).
 - **C#:** `SongDetailsDialog.axaml(.cs)`; en `MainWindow.OnShowSongDetailsDialog`.
 
-`GuiHighScoreWindow.ui` no lo usa nadie en el C++: no se porta. Cuando no quede ningún `NotPortedYet`
-en `MainWindow`, borrarlo y dar la fase 5 por hecha en §6.
+`GuiHighScoreWindow.ui` no lo usa nadie en el C++: no se porta. Al no quedar ningún `NotPortedYet`
+en `MainWindow`, se ha borrado y la fase 5 está hecha (§6).
 
+
+#### Lo hecho (5.8)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/SongDetailsDialog.axaml(.cs)` | `GuiSongDetailsDialog.*` (+ `.ui`) | Mismos nombres de controles que el `.ui` (`songInfoText`, `groupBox_2`, `rightHandChannelCombo`, `leftHandChannelCombo`) y métodos (`Init`, `UpdateSongInfoText`, `Accept`). El `TrackList` del `Song`, con su lock |
+| `App/MainWindow.axaml.cs` | `QtWindow::showSongDetailsDialog()` | `new SongDetailsDialog()` + `Init(...)` + `ShowDialog`. Como en C++, no para el hilo del Conductor. Se borra `NotPortedYet` (ya no lo usa nadie) |
+
+- Igual que el C++: los combos tienen "No channel assigned" y `GetAllChannelProgramNames(true)`; se eligen con
+  `GetHandTrackIndex(...) + 1`. Con las dos manos iguales (y no "ninguna") o solo una en "ninguna", el texto en rojo y
+  OK desactivado. `accept()` = `TrackList.SetActiveHandsIndex(izquierda - 1, derecha - 1)`, que pasa por
+  `Settings.SetChannelHands` (los canales se guardan en la canción de `library.db`, no en el JSON; no hay claves nuevas
+  de ajustes), refresca el panel y rebobina. Cancelar, Esc o la X no cambian nada.
+- Reutilizado de 5.5–5.7: grupo con `Border`, contador `_updating`, ancho mínimo de los combos según el texto más largo
+  (sin bajar del 180/150 del `.ui`), `IsDefault`/`IsCancel`. No hizo falta `MessageDialog` ni nada nuevo en `Settings`.
+- Probado en la app (`--settings=` en el scratchpad, `Midi/Output` vacío, sin sonido; ratón con `mouse_event` absoluto,
+  clic solo si la ventana bajo el ratón es de la app, teclas solo si la de delante es de la app): Ctrl+D con
+  `bm07-AmazingGrace` (derecha 4, izquierda 3); las dos iguales → "must be different" en rojo y OK desactivado; una en
+  "ninguna" → "must be none" en rojo; Cancel y la X no guardan; derecha 3 / izquierda 4 → OK: el panel pasa a "3R"/"4L"
+  y la partitura cambia; las dos en "ninguna" → OK: sin L/R; Tab + Enter acepta; Esc cancela; al reiniciar la app se
+  conservan 3R/4L.
+
+**Diferencias deliberadas con el C++:**
+- El diálogo se ajusta al contenido al abrirse (388 de ancho mínimo, 265 de alto como el `.ui`) y después ya no cambia
+  de ancho al cambiar el texto (sin eso, `SizeToContent` lo encogía con el texto rojo, más corto).
+- `activated` → `SelectionChanged` (no salta al volver a elegir lo mismo; daría el mismo texto). Enter con el foco en un
+  combo cerrado lo despliega (Avalonia); con el foco en otro control, Enter acepta (si OK está activo) y Esc cancela.
+
+**Fallo encontrado en el original (no corregido):** el texto siempre dice "using MIDI Channels 1" para las dos manos (es
+un texto fijo, no el canal elegido).
+
+**Sin probar:** canciones de una sola pista o sin canción cargada (combos solo con "No channel assigned"), el efecto en el
+juego con un teclado MIDI real, macOS/Linux y escalas distintas de 100 %.
