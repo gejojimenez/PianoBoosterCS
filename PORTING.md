@@ -132,7 +132,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.3 | **hecha** (22 nov 2026) | `SectionPlayer` (Midi), piano roll y vista general (Rendering + controles en la app), `tools/PianoRollWindow`. 14 pruebas nuevas en verde y las 114 anteriores sin cambios. Ver §11.3 |
 | 5.4 | **hecha** (22 nov 2026) | `SectionEditor` (`GuiSectionEditor`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.4 |
 | 5.5 | **hecha** (22 nov 2026) | `MidiSetupDialog` (`GuiMidiSetupDialog`); se borra el provisional. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.5 |
-| 5.6 | pendiente | `GuiKeyboardSetupDialog`. Ver §11.6 |
+| 5.6 | **hecha** (22 nov 2026) | `KeyboardSetupDialog` (`GuiKeyboardSetupDialog`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.6 |
 | 5.7 | pendiente | `GuiPreferencesDialog`. Ver §11.7 |
 | 5.8 | pendiente | `GuiSongDetailsDialog`. Ver §11.8 |
 | 6 | pendiente | |
@@ -488,8 +488,7 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 
-- Diálogos que aún muestran "not ported yet (phase 5)": detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
-  (Ctrl+P).
+- Diálogos que aún muestran "not ported yet (phase 5)": detalles de la canción (Ctrl+D) y preferencias (Ctrl+P).
 
 ### Sin probar
 
@@ -767,6 +766,45 @@ sonar), aceptar con FluidSynth o un puerto como salida, un teclado MIDI real (el
 
 - **C++:** `GuiKeyboardSetupDialog.h/.cpp/.ui` (93 + 166 + 352).
 - **C#:** `KeyboardSetupDialog.axaml(.cs)`; en `MainWindow.OnShowKeyboardSetup`.
+
+#### Lo hecho (5.6)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/KeyboardSetupDialog.axaml(.cs)` | `GuiKeyboardSetupDialog.*` (+ `.ui`) | Mismos nombres de controles que el `.ui` (`keyboardInfoText`, `rightSoundCombo`, `wrongSoundCombo`, `rightTestButton`, `lowestNoteEdit`, `resetButton`...) y métodos (`Init`, `UpdateSounds`, `UpdateInfoText`, `Accept`, `Reject`...). Los volúmenes están ocultos, como en C++ ("fixme Hide for now"). El `Song`, con su lock |
+| `App/MainWindow.axaml.cs` | `QtWindow::showKeyboardSetup()` | `new KeyboardSetupDialog()` + `Init(...)` + `ShowDialog`. Como en C++, **no** para el hilo del Conductor: los botones "Test" y las teclas del PC tocan a través de él |
+
+- No hizo falta nada nuevo de 5.5: ni `MessageDialog.GetInt` ni `Settings.Remove` (el diálogo no pregunta ni borra claves).
+- Sonidos, igual que el C++: al elegir en un combo, `UpdateSounds()` = `SetPianoSoundPatches(derecho - 1, falso - 1, true)`
+  (el índice 0 es "(None)" = sin sonido). `accept()` **no** llama a `SetPianoSoundPatches` (ya se hizo al elegir): guarda
+  `Keyboard/RightSound`, `WrongSound` y también `RightSoundPrevious` con el índice del combo (sin `- 1`, como lee
+  `QtWindow::init()`). `reject()` (Cancel y la X) vuelve a los del ajuste con el `- 1`. El rango (`LowestNote`/`HighestNote`)
+  solo se guarda si la entrada no es "None"; con el teclado del PC se muestra 58–75 desactivado.
+- `pressed()`/`released()` de los botones "Test" → cambios de `Button.IsPressed` (ratón o espacio). `editingFinished` →
+  Enter o perder el foco. La máscara `"000; "` → solo dígitos y `MaxLength` 3. El texto con `<b>` y color, con `Run`.
+- `keyPressEvent`/`keyReleaseEvent`: manejador *bubble* de la ventana para las teclas que no usó ningún control (no con el
+  foco en un cuadro de texto ni Tab), con el conjunto de teclas pulsadas para las repeticiones.
+- Probado en la app (`--settings=` en el scratchpad, sin sonido: `Midi/Output` vacío; ratón con `mouse_event` absoluto,
+  clic solo si la ventana bajo el ratón es de la app, teclas solo si la de delante es de la app): Ctrl+K abre el diálogo con
+  los sonidos del JSON; con "None (PC Keyboard)", rango 58–75 desactivado y el texto del teclado del PC; la lista de
+  instrumentos con "(None)"; elegir otro sonido, mantener "Test" (los dos), tecla `x`, Cancel (no guarda nada); OK con otro
+  sonido de las falsas (`WrongSound` 9, sin `LowestNote`/`HighestNote`); con otra entrada, rango 0–127 activo y
+  "octaves 10 / semitones 7" en negrita; escribir `2a00` (la `a` no entra) + Tab → 127 y el aviso rojo "0 notes"; Reset;
+  21 y 108 con Enter (no cierra) → "octaves 7 / semitones 3" → OK (se guardan); Esc no cierra; la X equivale a Cancel.
+
+**Diferencias deliberadas con el C++:**
+- `activated` de Qt salta también al volver a elegir el mismo elemento; `SelectionChanged`, no (daría el mismo
+  `SetPianoSoundPatches`).
+- Enter y Esc no aceptan ni cancelan, como en C++ (su `keyPressEvent` no llama al de `QDialog`, así que van al piano),
+  salvo Enter con el foco en un botón, que lo pulsa (como `autoDefault` en Qt).
+
+**Fallo encontrado en el original (no corregido):** con la latencia del diálogo MIDI activa (`Keyboard/RightSound` = 0, el
+piano silenciado; ver §11.5), este diálogo muestra "(None)" y OK guarda `RightSoundPrevious` = 0: al quitar la latencia el
+piano queda sin sonido (visto en la prueba). Al revés, elegir aquí un sonido con la latencia activa devuelve el sonido al
+piano sin quitar la latencia.
+
+**Sin probar:** escuchar de verdad los botones "Test" y las teclas (sin salida no suena nada; no debía sonar), un teclado
+MIDI real con el rango guardado, macOS/Linux y escalas distintas de 100 %.
 
 ### 11.7 Preferencias
 

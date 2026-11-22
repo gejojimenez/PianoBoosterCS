@@ -778,8 +778,13 @@ public partial class MainWindow : Window
     private async void OnShowSongDetailsDialog(object? sender, RoutedEventArgs e) =>
         await NotPortedYet(Strings.Tr("Song Details")); // GuiSongDetailsDialog: phase 5
 
-    private async void OnShowKeyboardSetup(object? sender, RoutedEventArgs e) =>
-        await NotPortedYet(Strings.Tr("Piano Keyboard Setting")); // GuiKeyboardSetupDialog: phase 5
+    // showKeyboardSetup(): as in the C++, the conductor keeps running (the test buttons play through it)
+    private async void OnShowKeyboardSetup(object? sender, RoutedEventArgs e)
+    {
+        var keyboardSetup = new KeyboardSetupDialog();
+        keyboardSetup.Init(_song, _sync, _settings);
+        await keyboardSetup.ShowDialog<bool?>(this);
+    }
 
     /// <summary>Called by the settings when a song has been loaded.</summary>
     public void SongLoaded(string fileName)
