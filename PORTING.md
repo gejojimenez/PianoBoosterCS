@@ -133,7 +133,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.4 | **hecha** (22 nov 2026) | `SectionEditor` (`GuiSectionEditor`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.4 |
 | 5.5 | **hecha** (22 nov 2026) | `MidiSetupDialog` (`GuiMidiSetupDialog`); se borra el provisional. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.5 |
 | 5.6 | **hecha** (22 nov 2026) | `KeyboardSetupDialog` (`GuiKeyboardSetupDialog`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.6 |
-| 5.7 | pendiente | `GuiPreferencesDialog`. Ver §11.7 |
+| 5.7 | **hecha** (22 nov 2026) | `PreferencesDialog` (`GuiPreferencesDialog`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.7 |
 | 5.8 | pendiente | `GuiSongDetailsDialog`. Ver §11.8 |
 | 6 | pendiente | |
 
@@ -488,7 +488,7 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 
-- Diálogos que aún muestran "not ported yet (phase 5)": detalles de la canción (Ctrl+D) y preferencias (Ctrl+P).
+- Diálogo que aún muestra "not ported yet (phase 5)": detalles de la canción (Ctrl+D).
 
 ### Sin probar
 
@@ -813,6 +813,47 @@ MIDI real con el rango guardado, macOS/Linux y escalas distintas de 100 %.
 - **C#:** `PreferencesDialog.axaml(.cs)`; en `MainWindow.OnShowPreferencesDialog` (después ya llama a
   `RefreshTranslate()` y `Score.RefreshScroll()`). El idioma (`General/lang`) se guarda pero no se aplica
   hasta la fase 6.
+
+#### Lo hecho (5.7)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/PreferencesDialog.axaml(.cs)` | `GuiPreferencesDialog.*` (+ `.ui`) | Mismos nombres de controles que el `.ui` (`showNoteNamesCheck`, `courtesyAccidentalsCheck`, `timingMarkersCheck`, `followThroughErrorsCheck`, `showColoredNotesCheck`, `followStopPointCombo`, `noteDisplayCombo`, `showTutorPagesCheck`, `languageCombo`) y métodos (`Init`, `InitLanguageCombo`, `Accept`). Recibe el `ScoreView` y, como el C++, no lo usa. El `Song`, con su lock |
+| `App/MainWindow.axaml.cs` | `QtWindow::showPreferencesDialog()` | `new PreferencesDialog()` + `Init(...)` + `ShowDialog`; después, como antes, `RefreshTranslate()` y `Score.RefreshScroll()` |
+| `App/translations/langs.json` | `translations/langs.json` | Copiado del C++; va a `translations/` junto al ejecutable (como lo instala el C++). Da el nombre nativo de cada idioma |
+
+- `accept()` igual que el C++: `Score/TimingMarkers` (y `CfgTimingMarkersFlag` del `Song`), `Score/NoteNames`,
+  `Score/CourtesyAccidentals`, `Tutor/TutorPages`, `Score/FollowThroughErrors`, `Score/ColoredNotes`,
+  `Score/StopPointMode` (número, y `CfgStopPointMode`), `Score/NoteDurationTrail`, `General/lang` (el código del combo;
+  `""` = idioma del sistema) y `Song.RefreshScroll()`. Cancelar, Esc o la X no guardan nada. No hizo falta nada nuevo
+  en `Settings` ni en `MessageDialog`.
+- Idioma: `InitLanguageCombo` es el del C++ (busca `translations/` junto al ejecutable, si no en la carpeta de datos;
+  lee `langs.json`; añade `<System Language>`, "English" y un elemento por cada `pianobooster_<código>.qm`, salvo
+  `blank`). Hasta la fase 6 no hay ficheros de traducción, así que solo salen esos dos más el guardado (ver abajo). La
+  fase 6 tendrá que cambiar el patrón `.qm` por lo que use (`.resx`/ensamblados satélite) y aplicar `General/lang` en
+  `RefreshTranslate()`.
+- Probado en la app (`--settings=` en el scratchpad, `Midi/Output` vacío, sin sonido; ratón con `mouse_event` absoluto,
+  clic solo si la ventana bajo el ratón es de la app, teclas solo si la de delante es de la app): Ctrl+P abre el diálogo
+  con los valores del JSON (`TimingMarkers`, `StopPointMode` 2 "After the Beat", la estela, `lang` "es" → "Español");
+  marcar casillas + Esc (no guarda nada); cambiar todo con ratón y flechas → OK (las 9 claves guardadas) y la partitura
+  se actualiza sola (nombres de nota, colores, sin estela); al volver a abrir, los nuevos valores; `<System
+  Language>` → `General/lang` = `""`; Esc con un combo desplegado solo lo cierra; Tab + Enter acepta.
+
+**Diferencias deliberadas con el C++:**
+- Un `General/lang` guardado que no está en la lista (hasta la fase 6, todos menos `en`) se añade al combo con su nombre
+  y queda elegido: en C++ el combo mostraría `<System Language>` y OK lo borraría.
+- `AdjustToContents` de los dos combos: su ancho mínimo se calcula midiendo el texto más largo; el diálogo se ajusta al
+  contenido (`SizeToContent`) con 411 de ancho mínimo, como el `.ui`.
+- Enter con el foco en un combo cerrado lo despliega (Avalonia); en Qt pulsaría OK. Con el foco en otro control, Enter
+  acepta (`IsDefault`) y Esc cancela (`IsCancel`), como en un `QDialog`.
+- El nombre de un idioma que no está en `langs.json` sale de `CultureInfo` (en C++, `QLocale::nativeLanguageName`).
+
+**Fallo encontrado en el original (no corregido):** si falta `langs.json` o no es válido, el combo queda vacío y OK
+guarda `General/lang` = `""` (se pierde el idioma elegido).
+
+**Sin probar:** con ficheros de traducción (no existen hasta la fase 6), las páginas del tutor al quitarlas (las canciones
+de `TestData` no tienen), el efecto en el juego de "Follow Through Errors" y del punto de parada (no hay teclado MIDI),
+macOS/Linux (carpeta `translations`) y escalas distintas de 100 %.
 
 ### 11.8 Detalles de la canción
 

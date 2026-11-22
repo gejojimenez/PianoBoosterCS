@@ -1,0 +1,72 @@
+<!-- Ported from GuiPreferencesDialog.ui of PianoBooster (C++): same control names. The QGroupBox
+     are borders with a title (as in SidePanel, MidiSetupDialog and KeyboardSetupDialog). GPLv3. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.PreferencesDialog"
+        Title="Preferences" MinWidth="411" SizeToContent="WidthAndHeight" CanResize="False"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Border.group">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="TextBlock.groupTitle">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <!-- verticalLayout_4 -->
+  <StackPanel Margin="9" Spacing="9">
+    <Border Classes="group" x:Name="groupBox_2">
+      <StackPanel>
+        <TextBlock Classes="groupTitle" Text="Score Settings" />
+        <!-- gridLayout: the checkboxes in column 0 (the spacers of column 1 are the free space) -->
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="6" RowSpacing="2">
+          <CheckBox x:Name="showNoteNamesCheck" Grid.Row="0" Content="Show Note Names" />
+          <CheckBox x:Name="courtesyAccidentalsCheck" Grid.Row="1" Content="Courtesy Accidentals" />
+          <CheckBox x:Name="timingMarkersCheck" Grid.Row="2" Content="Timing Markers" />
+          <CheckBox x:Name="followThroughErrorsCheck" Grid.Row="3" Content="Follow Through Errors" />
+          <CheckBox x:Name="showColoredNotesCheck" Grid.Row="4" Content="Color Coded Notes"
+                    ToolTip.Tip="Show color coded notes on the score" />
+          <TextBlock x:Name="label" Classes="label" Grid.Row="5" Text="Follow stop point:" />
+          <ComboBox x:Name="followStopPointCombo" Grid.Row="5" Grid.Column="1" Margin="0,2" />
+          <TextBlock x:Name="noteDisplayLabel" Classes="label" Grid.Row="6" Text="Note display:" />
+          <ComboBox x:Name="noteDisplayCombo" Grid.Row="6" Grid.Column="1" Margin="0,2"
+                    ToolTip.Tip="Show only the note heads, or also a trail that lasts as long as each note sounds" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="group" x:Name="groupBox_3">
+      <StackPanel>
+        <TextBlock Classes="groupTitle" Text="Music Course" />
+        <CheckBox x:Name="showTutorPagesCheck" Content="Show Tutor Help Pages" />
+      </StackPanel>
+    </Border>
+
+    <Border Classes="group" x:Name="groupBox_4">
+      <StackPanel>
+        <TextBlock Classes="groupTitle" Text="Language" />
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+          <TextBlock x:Name="label_3" Classes="label" Text="Language:" />
+          <ComboBox x:Name="languageCombo" Grid.Column="1" HorizontalAlignment="Stretch" MaxDropDownHeight="400" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- buttonBox: Ok | Cancel (Enter accepts and Esc rejects, as in a QDialog) -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="okButton" Content="OK" MinWidth="80" IsDefault="True"
+              HorizontalContentAlignment="Center" Click="OnOkButtonClicked" />
+      <Button x:Name="cancelButton" Content="Cancel" MinWidth="80" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCancelButtonClicked" />
+    </StackPanel>
+  </StackPanel>
+</Window>

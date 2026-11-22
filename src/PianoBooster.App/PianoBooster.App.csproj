@@ -30,6 +30,8 @@
   <ItemGroup>
     <!-- The images of src/images of the C++ code -->
     <AvaloniaResource Include="images\*.png" />
+    <!-- translations/langs.json of the C++ code (the names of the languages; installed next to the program) -->
+    <None Include="translations\langs.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -769,7 +769,10 @@ public partial class MainWindow : Window
 
     private async void OnShowPreferencesDialog(object? sender, RoutedEventArgs e)
     {
-        await NotPortedYet(Strings.Tr("Preferences")); // GuiPreferencesDialog: phase 5
+        var preferencesDialog = new PreferencesDialog();
+        preferencesDialog.Init(_song, _sync, _settings, _glWidget);
+        await preferencesDialog.ShowDialog<bool?>(this);
+
         RefreshTranslate();
         lock (_sync)
             _score.RefreshScroll();
