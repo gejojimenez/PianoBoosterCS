@@ -98,6 +98,37 @@ public partial class SidePanel : UserControl
         ToolTip.SetTip(deletePartButton, Strings.Tr("Delete the selected section"));
         editorButton.Content = Strings.Tr("Editor...");
         ToolTip.SetTip(editorButton, Strings.Tr("Open the section editor, to create and change the sections on a view of the whole song (Ctrl+E)"));
+        if (partCombo.Items.Count > 0 && partCombo.Items[0] is ComboBoxItem wholeSong)
+        {
+            wholeSong.Content = Strings.Tr("Whole song");
+            if (partCombo.SelectedIndex == 0)
+            {
+                // the ComboBox of Avalonia shows a copy of the selected item, taken when it is selected
+                _updating++;
+                partCombo.SelectedIndex = -1;
+                partCombo.SelectedIndex = 0;
+                _updating--;
+            }
+        }
+    }
+
+    // GuiSidePanel::updateTranslate(); the texts of the .ui file (retranslateUi()) are translated with the
+    // whole window by MainWindow.RefreshTranslate() (Strings.TranslateTree)
+    public void UpdateTranslate()
+    {
+        _updating++;
+        if (rhythmTappingCombo.Items.Count >= 2)
+        {
+            int index = rhythmTappingCombo.SelectedIndex;
+            rhythmTappingCombo.Items[0] = Strings.Tr("Drums");
+            rhythmTappingCombo.Items[1] = Strings.Tr("Melody");
+            rhythmTappingCombo.SelectedIndex = index;
+        }
+        _updating--;
+
+        // the song header, which is not in the .ui file
+        SetPartTexts();
+        SetSongInfo(_songTitle, _songFileName, _songInfo);
     }
 
     /// <summary>Reads the parts of the current song from the library and selects selectId (or the whole song).</summary>

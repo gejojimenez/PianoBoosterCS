@@ -67,6 +67,7 @@ public partial class SectionEditor : Window
                          Window? parent)
     {
         InitializeComponent();
+        Strings.TranslateTree(this); // retranslateUi() of the .ui file
         _library = library;
         _songPath = songPath;
         _device = device;

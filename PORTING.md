@@ -140,6 +140,7 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.8 | **hecha** (22 nov 2026) | `SongDetailsDialog` (`GuiSongDetailsDialog`); se borra `NotPortedYet`. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.8 |
 | **5** | **hecha** (22 nov 2026) | Las 8 subfases (§11). Ya no queda ningún diálogo "not ported yet" en la app |
 | 6.1 | **hecha** (22 nov 2026) | `tools/ts-to-resx.ps1`, 18 `Strings.<idioma>.resx` (satélites) y `Strings` con `ResourceManager`. Proyecto nuevo `PianoBooster.App.Tests`: 5 pruebas nuevas en verde y las 128 anteriores sin cambios. Ver §12.1 |
+| 6.2 | **hecha** (22 nov 2026) | `General/lang` aplicado en vivo (`RefreshTranslate`, `Strings.TranslateTree`), combo de idiomas con los satélites, textos de Rendering/Core con su contexto. 3 pruebas nuevas en verde y las 133 anteriores sin cambios; probado en la app. Ver §12.2 |
 | 6 | en curso | Subfases en §12 |
 
 ## 7. Fase 1: lo hecho
@@ -413,7 +414,7 @@ Se ha pasado de Avalonia 11.3.23 a **12.1.6** (la app, `tools/ScoreWindow`) y Sk
 | `MessageDialog.cs` | `QMessageBox`, `QInputDialog` | Información, aviso, pregunta Sí/No, texto y número (`GetInt`, desde 5.5) |
 | `HtmlText.cs` | texto enriquecido de Qt | Avalonia no tiene control HTML: entiende lo que usa PianoBooster (`h1`-`h3`, `p`, `blockquote`, `b`, `i`, `br`, `a`, `center`, tablas sencillas). Lo usan la ayuda, "acerca de" y la página del tutor |
 | `KeepDisplayOnPlatform.cs` | `KeepDisplayOn.cpp` | Da sus acciones a `Core.KeepDisplayOn`. Ver abajo |
-| `Strings.cs` | `tr()` | Desde 6.1, las traducciones de `translations/Strings.<idioma>.resx` (ver §12.1); el idioma se elige en 6.2 |
+| `Strings.cs`, `StringsLanguage.cs` | `tr()`, `refreshTranslate()` | Las traducciones de `translations/Strings.<idioma>.resx` (§12.1) y el idioma de `General/lang`, en vivo (§12.2) |
 | `images/` | `src/images` | `play`, `stop`, `play-from-start`, `flag`, `pianobooster` (.png/.ico) |
 
 **Proyecto `src/PianoBooster.Data`** (sin interfaz; en la fase 5 tendrá también la biblioteca):
@@ -845,8 +846,8 @@ MIDI real con el rango guardado, macOS/Linux y escalas distintas de 100 %.
   Language>` → `General/lang` = `""`; Esc con un combo desplegado solo lo cierra; Tab + Enter acepta.
 
 **Diferencias deliberadas con el C++:**
-- Un `General/lang` guardado que no está en la lista (hasta la fase 6, todos menos `en`) se añade al combo con su nombre
-  y queda elegido: en C++ el combo mostraría `<System Language>` y OK lo borraría.
+- Un `General/lang` guardado que no está en la lista (desde 6.2, uno que no esté instalado) se añade al combo con su
+  nombre y queda elegido: en C++ el combo mostraría `<System Language>` y OK lo borraría.
 - `AdjustToContents` de los dos combos: su ancho mínimo se calcula midiendo el texto más largo; el diálogo se ajusta al
   contenido (`SizeToContent`) con 411 de ancho mínimo, como el `.ui`.
 - Enter con el foco en un combo cerrado lo despliega (Avalonia); en Qt pulsaría OK. Con el foco en otro control, Enter
@@ -1049,6 +1050,61 @@ solos en la publicación).
   `<System Language>`; un idioma incompleto (`ca`) mezcla inglés donde falta, como Qt.
 - **Fuera de alcance** (anotar): `music_<idioma>` (no existe), los textos propios de Avalonia (menú contextual de los
   cuadros de texto), derecha a izquierda (`ar`, `he`, que no están entre los 18).
+
+#### Lo hecho (6.2)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `App/StringsLanguage.cs` (nuevo; `Strings` pasa a `partial`) | `refreshTranslate()`, `listWidgetsRetranslateUi`, `retranslateUi()`, `initLanguageCombo()` | `CultureOfLanguage` (código de Qt → cultura: `zh_HK` → `zh-HK`, `sr@latin` → `sr-Latn`; `en`, `""` o desconocido → invariante = inglés), `LanguageOfCulture`, `InstalledLanguages` (carpetas junto al ejecutable con `PianoBooster.resources.dll`) y `TranslateTree` |
+| `App/Strings.cs` | | `Translate(context, text, a)` (= `translate(...).arg(a)`) |
+| `App/MainWindow.axaml.cs` | `QtWindow::refreshTranslate()` | `Strings.Culture` = `SelectedLangauge()`; `Conductor`/`MidiInfo`/`TrackList.Translate` con `CConductor`/`CMidiInfo`/`QObject`; `Draw.NoteNames` con `CDraw`; `Accuracy:`/`Song:`/`Bar:` de `ViewRenderer` con `CGLView`; `TranslateTree(this)`; `SidePanel`/`TopBar.UpdateTranslate()`; avisos y tutor. El constructor llama a `TranslateTree(this)` justo después de `InitializeComponent()` para guardar los originales. `Cannot open "%1"` con el contexto `QtWindow` |
+| `App/SidePanel.axaml.cs` | `GuiSidePanel::updateTranslate()`, `setPartTexts()` | Combo de ritmo, `setPartTexts()` (ahora también "Whole song", como el C++) y cabecera de la canción |
+| `App/TopBar.axaml.cs` | `GuiTopBar::updateTranslate()`, `reloadKeyCombo()` | Combo mayor/menor; las tonalidades con el contexto `GuiTopBar` (`B` no es `H`) |
+| `App/PreferencesDialog.axaml.cs` | `initLanguageCombo()` | `Strings.InstalledLanguages()` en vez de `pianobooster_*.qm` |
+| Los 6 diálogos | `retranslateUi()` (`setupUi`) | `Strings.TranslateTree(this)` tras `InitializeComponent()`. `None` con el contexto de `GuiKeyboardSetupDialog`/`GuiMidiSetupDialog` |
+| `tests/PianoBooster.App.Tests/TranslationTests.cs` | | 3 pruebas nuevas: teclas de acceso, códigos de idioma e idiomas instalados (los 18 satélites), y `TranslateTree` con controles reales (guarda originales, no toca lo añadido ni lo cambiado por el código, vuelve al inglés) |
+
+- `TranslateTree(root)`: la primera vez guarda, por cada elemento del árbol lógico, los textos del XAML (`Title`, `Header`
+  de `MenuItem`/`HeaderedContentControl`, `Content` de texto de `ContentControl`, `Text` de `TextBlock`, `PlaceholderText`,
+  `ToolTip.Tip`) en una `ConditionalWeakTable` (una lista vacía si no tiene textos, para que lo que se añada después
+  —canciones, secciones, pistas— nunca se traduzca). Cada llamada pone `Translate(contexto, original)`, salvo si el
+  código cambió el texto desde la última vez. El contexto sale del tipo (`MainWindow` → `QtWindow`, `SidePanel` →
+  `GuiSidePanel`, `TopBar` → `GuiTopBar`, `LoopingPopup` → `GuiLoopingPopup`, cada diálogo → su `Gui*`), así que
+  `Midi Input Device:` usa el de `GuiMidiSetupDialog` y no el de `GuiMidiSettingsDialog`. En `Header`/`Content`, `_` de
+  Avalonia ↔ `&` de Qt (`E_xit` → `E&xit` → `Sa&lir` → `Sa_lir`; `MIDI input & output` ↔ `MIDI input && output`).
+- Comprobado sin la app: de los 206 textos de los `.axaml`, 24 no están en `pianobooster_es.ts` (`OK`/`Cancel`, que
+  en C++ vienen de `qt_<idioma>.qm`; símbolos `+`, `−`, `■`, `💾`...; `%`; la leyenda del editor y el nombre de las pestañas
+  `FluidSynth`, que el código o el C++ ponen igual).
+- Probado en la app (`--settings=` en el scratchpad, `Midi/Output` vacío, sin sonido, `--Xquit-after=900`; ratón con
+  `mouse_event` absoluto, clic solo con la app bajo el ratón, teclas solo con la app delante), `bm07-AmazingGrace` y
+  nombres de nota: con `General/lang` = `es` arranca en español (menús con teclas de acceso, panel, barra, aviso rojo,
+  `Compás:`, notas `Do`/`Fa`, pistas `Piano de Cola`/`Baterías`, `40 compases`, `(cambia)`); Preferencias en español con
+  los 18 idiomas por su nombre nativo; `Deutsch` + OK → la ventana cambia en vivo y se guarda `de`; al reiniciar arranca
+  en alemán (`Schlagzeug`, tonalidad `F`, `Takt:`); en vivo a `Español` ("Canción completa" también); diálogo MIDI en
+  español (`Entrada & Salida Midi`, `Ninguno`); `Català` mezcla inglés donde falta; `<Idioma del sistema>` guarda `""`
+  y sale en español (Windows en `es-ES`); `English` vuelve al inglés desde los originales.
+
+**Diferencias deliberadas con el C++:**
+- Se traducen en vivo todos los textos del XAML de la ventana (en C++, los de los `.ui` del panel y la barra con
+  `retranslateUi()`, y de la ventana solo `toolTip`/`whatsThis`/`windowTitle`/`statusTip` y el texto de las `QAction`, que
+  es casi lo mismo). Un texto que el código ha cambiado se respeta (en C++ `retranslateUi()` lo devuelve al del `.ui`
+  hasta el siguiente cambio); "Start / Repeat" se rehace con `UpdateSectionSummary()`.
+- Idioma del sistema: `CultureInfo.CurrentUICulture` hasta el primer `-` (ya estaba así en `SelectedLangauge`), y
+  `ResourceManager` cae de `es-MX` a `es`. En Qt, `bcp47Name()` de `es-MX` no tiene `_` y `pianobooster_es-MX` no carga.
+- El combo de Avalonia muestra una copia del elemento elegido: al traducir "Whole song" se vuelve a elegir.
+
+**Como en el C++ (no es un fallo del port):** al cambiar de idioma en vivo, el combo de tonalidad y la lista de pistas
+siguen en el idioma anterior hasta que se carga otra canción (o se cambia mayor/menor); los botones `OK`/`Cancel` y los
+nombres GM de instrumentos que un `.ts` no tenga salen en inglés; la traducción alemana de "Mute your part when playing"
+lleva un `<br>` literal; `CConductor` compara con su propio `None` (`Nicht ausgewählt`) y el diálogo MIDI pone el suyo
+(`Keines`).
+
+**Fallo encontrado en el original (no corregido):** el "smart resize panel" de `GuiSidePanel::updateTranslate()` cambia
+el ancho máximo del panel, pero el `QScrollArea` del fork fija su ancho en el constructor, antes de traducir: los textos
+largos de Modo/Manos se cortan (en `ca`, "Ambdues"). Aquí igual (310 fijos).
+
+**Sin probar:** los idiomas de derecha a izquierda y los de 3 plurales en la app, el resto de diálogos en un idioma que no
+sea `es`/`de`, macOS/Linux y escalas distintas de 100 %.
 
 ### 12.3 `dotnet publish` autocontenido para Windows (rama `phase-6.3-publish`)
 

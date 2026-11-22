@@ -3,12 +3,10 @@
 // follow stop point, note display), the tutor pages and the language. GPLv3.
 
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -26,6 +24,7 @@ public partial class PreferencesDialog : Window
     public PreferencesDialog()
     {
         InitializeComponent();
+        Strings.TranslateTree(this); // retranslateUi() of the .ui file
         Title = Strings.Tr("Preferences");
         followStopPointCombo.Items.Add(Strings.Tr("Automatic (Recommended)"));
         followStopPointCombo.Items.Add(Strings.Tr("On the Beat"));
@@ -108,27 +107,17 @@ public partial class PreferencesDialog : Window
         if (savedLang == "en")
             languageCombo.SelectedIndex = languageCombo.Items.Count - 1;
 
-        // QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot, sorted by name (QDir::Name | QDir::IgnoreCase)
-        var rx = new Regex("^pianobooster_(.*)\\.qm$");
-        IEnumerable<string> listLang = Directory.EnumerateFiles(localeDirectory)
-            .Select(Path.GetFileName).OfType<string>()
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
-        foreach (string fileName in listLang)
+        // the pianobooster_<code>.qm files in the C++ code; here the satellite assemblies of the
+        // translations (<culture>/PianoBooster.resources.dll), sorted by name
+        foreach (string langCode in Strings.InstalledLanguages())
         {
-            Match match = rx.Match(fileName);
-            if (!match.Success)
-                continue;
-            string langCode = match.Groups[1].Value;
-            if (langCode == "blank")
-                continue;
-
             AddLanguage(LanguageName(rootLangs, langCode), langCode);
             if (savedLang == langCode)
                 languageCombo.SelectedIndex = languageCombo.Items.Count - 1;
         }
 
-        // Until phase 6 there are no translation files: a saved language that is not in the list is
-        // kept (in the C++ the combo shows "<System Language>" and OK would forget it).
+        // A saved language that is not installed is kept (in the C++ the combo shows "<System Language>"
+        // and OK would forget it).
         if (savedLang.Length > 0 && !languageCombo.Items.OfType<ComboBoxItem>().Any(i => (string?)i.Tag == savedLang))
         {
             AddLanguage(LanguageName(rootLangs, savedLang), savedLang);

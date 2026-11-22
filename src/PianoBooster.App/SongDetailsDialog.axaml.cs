@@ -26,6 +26,7 @@ public partial class SongDetailsDialog : Window
     public SongDetailsDialog()
     {
         InitializeComponent();
+        Strings.TranslateTree(this); // retranslateUi() of the .ui file
         Title = Strings.Tr("Song Details");
         // The width fits the contents when the dialog opens, then stays (as in Qt): otherwise it would
         // change with the length of the text of songInfoText.

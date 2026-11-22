@@ -30,6 +30,7 @@ public partial class MidiSetupDialog : Window
     public MidiSetupDialog()
     {
         InitializeComponent();
+        Strings.TranslateTree(this); // retranslateUi() of the .ui file
         _latencyFix = 0;
         _latencyChanged = false;
         midiSetupTabWidget.SelectedIndex = 0;
@@ -190,7 +191,7 @@ public partial class MidiSetupDialog : Window
         _updating++;
         // Check outputs.
         midiOutputCombo.Items.Clear();
-        midiOutputCombo.Items.Add(Strings.Tr("None"));
+        midiOutputCombo.Items.Add(Strings.Translate("GuiMidiSetupDialog", "None"));
         lock (_sync)
             foreach (string port in _midiDevice.GetMidiPortList(MidiType.Output))
                 midiOutputCombo.Items.Add(port);
@@ -228,7 +229,7 @@ public partial class MidiSetupDialog : Window
         else
             AppendInfo(Gray, Strings.Tr("MIDI Input Device:") + " " + input);
 
-        if (output == Strings.Tr("None"))
+        if (output == Strings.Translate("GuiMidiSetupDialog", "None"))
             AppendInfo(Red, Strings.Tr("No Sound Output Device selected; Choose a MIDI Output Device"));
         else if (output.Contains("MIDI Through", StringComparison.OrdinalIgnoreCase))
             AppendInfo(Orange, Strings.Tr("The use of MIDI Through is not recommended!"));
@@ -310,7 +311,7 @@ public partial class MidiSetupDialog : Window
         lock (_sync)
         {
             _song.OpenMidiPort(MidiType.Input, input);
-            if (input.StartsWith(Strings.Tr("None"), StringComparison.Ordinal))
+            if (input.StartsWith(Strings.Translate("GuiMidiSetupDialog", "None"), StringComparison.Ordinal))
                 Chord.SetPianoRange(Song.PcKeyLowestNote, Song.PcKeyHighestNote);
             else
                 Chord.SetPianoRange(_settings.Value("Keyboard/LowestNote", 0),

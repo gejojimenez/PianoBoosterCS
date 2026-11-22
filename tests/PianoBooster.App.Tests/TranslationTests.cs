@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+using Avalonia.Controls;
 using Xunit;
 
 namespace PianoBooster.App.Tests;
@@ -88,6 +90,72 @@ public sealed class TranslationTests : IDisposable
         Assert.Equal(new[] { 2, 0, 1, 2, 0, 2 }, new[] { 0, 1, 3, 11, 21, 25 }.Select(n => Strings.PluralForm(CultureInfo.GetCultureInfo("ru"), n)));
         Assert.Equal(new[] { 2, 0, 1, 2, 2, 1 }, new[] { 0, 1, 3, 12, 21, 22 }.Select(n => Strings.PluralForm(CultureInfo.GetCultureInfo("pl"), n)));
         Assert.Equal(new[] { 2, 0, 1, 2 }, new[] { 0, 1, 4, 5 }.Select(n => Strings.PluralForm(CultureInfo.GetCultureInfo("cs"), n)));
+    }
+
+    [Fact]
+    public void AccessKeys()
+    {
+        Assert.Equal("E&xit", Strings.AvaloniaToQtAccessKey("E_xit"));
+        Assert.Equal("MIDI input && output", Strings.AvaloniaToQtAccessKey("MIDI input & output"));
+        Assert.Equal("a_b", Strings.AvaloniaToQtAccessKey("a__b"));
+        Assert.Equal("_Salir", Strings.QtToAvaloniaAccessKey("&Salir"));
+        Assert.Equal("Entrada & salida", Strings.QtToAvaloniaAccessKey("Entrada && salida"));
+        Assert.Equal("a__b", Strings.QtToAvaloniaAccessKey("a_b"));
+        // pianobooster_es.ts: "&File" -> "&Archivo"; a text of a menu of the XAML file is "_File"
+        Assert.Equal("_Archivo", Text("es", () => Strings.TranslateXamlText("QtWindow", "_File", true)));
+        Assert.Equal("_File", Text("", () => Strings.TranslateXamlText("QtWindow", "_File", true)));
+    }
+
+    [Fact]
+    public void LanguageCodes()
+    {
+        Assert.Equal("es", Strings.CultureOfLanguage("es").Name);
+        Assert.Equal("zh-HK", Strings.CultureOfLanguage("zh_HK").Name);
+        Assert.Equal("sr-Latn", Strings.CultureOfLanguage("sr@latin").Name);
+        Assert.Equal(CultureInfo.InvariantCulture, Strings.CultureOfLanguage("en"));
+        Assert.Equal(CultureInfo.InvariantCulture, Strings.CultureOfLanguage(""));
+        Assert.Equal(CultureInfo.InvariantCulture, Strings.CultureOfLanguage("xx_nonsense"));
+        Assert.Equal("zh_HK", Strings.LanguageOfCulture("zh-HK"));
+        Assert.Equal("sr@latin", Strings.LanguageOfCulture("sr-Latn"));
+
+        // the satellite assemblies of the application are copied next to the tests
+        List<string> installed = Strings.InstalledLanguages();
+        Assert.Equal(18, installed.Count);
+        Assert.Contains("es", installed);
+        Assert.Equal(installed.OrderBy(l => l, StringComparer.OrdinalIgnoreCase), installed);
+    }
+
+    [Fact]
+    public void TranslateTreeKeepsTheOriginals()
+    {
+        var label = new TextBlock { Text = "Show Note Names" };
+        var button = new Button { Content = "_Help" };
+        var changedByCode = new TextBlock { Text = "Song:" };
+        var root = new StackPanel { Children = { label, button, changedByCode } };
+        ToolTip.SetTip(button, "Piano Booster Help");
+
+        Strings.Culture = CultureInfo.InvariantCulture;
+        Strings.TranslateTree(root); // keeps the originals
+        var added = new TextBlock { Text = "Show Note Names" };
+        root.Children.Add(added); // e.g. a song added by the code: never translated
+        changedByCode.Text = "Amazing Grace";
+
+        Strings.Culture = CultureInfo.GetCultureInfo("es");
+        Strings.TranslateTree(root);
+        Assert.Equal("Mostar el Nombre de las Notas", label.Text);
+        Assert.Equal("A_yuda", button.Content); // pianobooster_es.ts: "&Help" -> "A&yuda"
+        Assert.Equal("Ayuda de Piano Booster", ToolTip.GetTip(button));
+        Assert.Equal("Show Note Names", added.Text);
+        Assert.Equal("Amazing Grace", changedByCode.Text);
+
+        Strings.Culture = CultureInfo.GetCultureInfo("de");
+        Strings.TranslateTree(root); // from the original, not from the Spanish text
+        Assert.Equal("Notennamen anzeigen", label.Text);
+
+        Strings.Culture = CultureInfo.InvariantCulture;
+        Strings.TranslateTree(root);
+        Assert.Equal("Show Note Names", label.Text);
+        Assert.Equal("_Help", button.Content);
     }
 
     // A small .ts file with each case of the script

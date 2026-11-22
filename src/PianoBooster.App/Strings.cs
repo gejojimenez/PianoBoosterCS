@@ -7,7 +7,7 @@ using System.Resources;
 
 namespace PianoBooster.App;
 
-internal static class Strings
+internal static partial class Strings
 {
     private static readonly ResourceManager s_resources =
         new("PianoBooster.App.translations.Strings", typeof(Strings).Assembly);
@@ -44,6 +44,9 @@ internal static class Strings
     /// code, e.g. "CDraw"), for the few texts translated differently in different contexts; otherwise Tr(text).
     /// </summary>
     public static string Translate(string context, string text) => Lookup(context + "|" + text) ?? Tr(text);
+
+    /// <summary>translate(context, text).arg(a).</summary>
+    public static string Translate(string context, string text, object a) => Translate(context, text).Replace("%1", a.ToString());
 
     /// <summary>tr(text, nullptr, n): the plural form of the language, "%n" replaced by n.</summary>
     public static string TrPlural(string text, int n) =>

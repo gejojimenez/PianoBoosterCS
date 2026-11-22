@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     {
         _commandLine = commandLine;
         InitializeComponent();
+        Strings.TranslateTree(this); // keeps the texts of the XAML files (listWidgetsRetranslateUi): see RefreshTranslate()
 
         SettingsStore store = commandLine.SettingsFile is { Length: > 0 } file
             ? SettingsStore.Open(Path.GetFullPath(file))
@@ -217,7 +218,7 @@ public partial class MainWindow : Window
         string path = Path.GetFullPath(arg);
         string name = Path.GetFileName(path);
         if (!File.Exists(path))
-            _midiFileError = Strings.Tr("Cannot open \"%1\"", path);
+            _midiFileError = Strings.Translate("QtWindow", "Cannot open \"%1\"", path);
         else if (!Program.MidiFileExtensions.Any(x => name.EndsWith(x, StringComparison.OrdinalIgnoreCase)))
             _midiFileError = Strings.Tr("\"%1\" is not a MIDI File", name);
         else
@@ -896,9 +897,30 @@ public partial class MainWindow : Window
         tutorWindow.IsVisible = true;
     }
 
-    // refreshTranslate(): the translations come in phase 6; what it updates is updated here
+    // QtWindow::refreshTranslate()
     private void RefreshTranslate()
     {
+        string locale = _settings.SelectedLangauge();
+
+        // the QTranslator of the application: the satellite assembly of the language
+        Strings.Culture = Strings.CultureOfLanguage(locale);
+        Log.Info($"Translations: '{locale}' ({(Strings.Culture.Name.Length > 0 ? Strings.Culture.Name : "English")})");
+
+        // the tr() of the classes without interface, with their contexts of the C++ code
+        Conductor.Translate = text => Strings.Translate("CConductor", text);
+        MidiInfo.Translate = text => Strings.Translate("CMidiInfo", text);
+        TrackList.Translate = text => Strings.Translate("QObject", text); // QObject::tr(); also tr() of CTrackList
+        PianoBooster.Rendering.Draw.NoteNames = new[] { "C", "D", "E", "F", "G", "A", "B" }
+            .Select(n => Strings.Translate("CDraw", n)).ToArray();
+        _glWidget.Renderer.AccuracyText = Strings.Translate("CGLView", "Accuracy:");
+        _glWidget.Renderer.SongText = Strings.Translate("CGLView", "Song:");
+        _glWidget.Renderer.BarText = Strings.Translate("CGLView", "Bar:");
+
+        // retranslate UI: the texts of the XAML files, kept by the constructor
+        Strings.TranslateTree(this);
+
+        sidePanel.UpdateTranslate();
+        topBar.UpdateTranslate();
         _settings.UpdateWarningMessages();
         _settings.UpdateTutorPage();
     }

@@ -74,6 +74,7 @@ public partial class LibraryDialog : Window
         _library = library;
         _currentSong = Library.NormalisePath(currentSong);
         InitializeComponent();
+        Strings.TranslateTree(this); // retranslateUi() of the .ui file
 
         Title = Strings.Tr("Library");
         addButton.Content = Strings.Tr("Add Location...");

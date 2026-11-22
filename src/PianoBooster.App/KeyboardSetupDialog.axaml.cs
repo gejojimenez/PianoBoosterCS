@@ -27,6 +27,7 @@ public partial class KeyboardSetupDialog : Window
     public KeyboardSetupDialog()
     {
         InitializeComponent();
+        Strings.TranslateTree(this); // retranslateUi() of the .ui file
         Title = Strings.Tr("Piano Keyboard Settings");
 
         // the pressed() and released() signals of the test buttons (mouse or space bar)
@@ -109,7 +110,7 @@ public partial class KeyboardSetupDialog : Window
             int highestNote = _settings.Value("Keyboard/HighestNote", 127);
 
             string midiInputName = _settings.Value("Midi/Input");
-            if (midiInputName.StartsWith(Strings.Tr("None"), StringComparison.OrdinalIgnoreCase))
+            if (midiInputName.StartsWith(Strings.Translate("GuiKeyboardSetupDialog", "None"), StringComparison.OrdinalIgnoreCase))
             {
                 lowestNote = Song.PcKeyLowestNote;
                 highestNote = Song.PcKeyHighestNote;

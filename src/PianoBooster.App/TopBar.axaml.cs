@@ -37,6 +37,22 @@ public partial class TopBar : UserControl
         loopingPopup.SectionChanged += UpdateSectionSummary;
     }
 
+    // GuiTopBar::updateTranslate(); the texts of the .ui file (retranslateUi()) are translated with the
+    // whole window by MainWindow.RefreshTranslate() (Strings.TranslateTree)
+    public void UpdateTranslate()
+    {
+        _updating++;
+        int index = majorCombo.SelectedIndex;
+        majorCombo.Items[0] = Strings.Tr("Major");
+        majorCombo.Items[1] = Strings.Tr("Minor");
+        majorCombo.SelectedIndex = index;
+        _updating--;
+
+        // in C++ retranslateUi() puts back the text of the .ui file in the button, until the next change
+        if (_song != null)
+            UpdateSectionSummary();
+    }
+
     private static Bitmap LoadIcon(string name) =>
         new(AssetLoader.Open(new Uri("avares://PianoBooster/images/" + name)));
 
@@ -78,7 +94,7 @@ public partial class TopBar : UserControl
         _updating++;
         keyCombo.Items.Clear();
         foreach (string key in major ? s_majorKeys : s_minorKeys)
-            keyCombo.Items.Add(Strings.Tr(key));
+            keyCombo.Items.Add(Strings.Translate("GuiTopBar", key)); // "B" is "H" only in CDraw
         _updating--;
         Refresh(false);
     }
