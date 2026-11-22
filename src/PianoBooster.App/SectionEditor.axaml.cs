@@ -468,7 +468,7 @@ public partial class SectionEditor : Window
             return;
         }
         int bars = _map.BarOfTick(_selEnd - 1) - _map.BarOfTick(_selStart) + 1;
-        string text = RangeText(_selStart, _selEnd) + " · " + Strings.TrPlural("%n bar(s)", "%n bar(s)", bars) +
+        string text = RangeText(_selStart, _selEnd) + " · " + Strings.TrPlural("%n bar(s)", bars) +
                       " · " + DurationText(_map.MsOfTick(_selEnd) - _map.MsOfTick(_selStart));
         if (IsDirty())
             text += "\n" + Strings.Tr("Changed: press \"Save\" to keep it in \"%1\", or \"New\" to make another section.",

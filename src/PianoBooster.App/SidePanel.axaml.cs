@@ -84,7 +84,7 @@ public partial class SidePanel : UserControl
         if (info.KeyText().Length > 0)
             first.Add(info.KeyText());
         first.Add(info.TempoText());
-        string second = info.DurationText() + " · " + Strings.TrPlural("%n bar", "%n bars", info.Bars);
+        string second = info.DurationText() + " · " + Strings.TrPlural("%n bar(s)", info.Bars);
         songInfoLabel.Text = string.Join(" · ", first) + "\n" + second;
     }
 

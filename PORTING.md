@@ -72,8 +72,10 @@ PianoBoosterCS/
 │  ├─ PianoBooster.Core.Tests   xUnit: pruebas de referencia contra el C++ (+ MidiInfo)
 │  ├─ PianoBooster.Midi.Tests   xUnit: mensajes MIDI, FluidSynth sin SoundFont, hilo del Conductor
 │  ├─ PianoBooster.Rendering.Tests  xUnit: fotogramas de canciones dibujados en un bitmap (PNG)
-│  └─ PianoBooster.Data.Tests   xUnit: ajustes, importación del .ini del C++ y biblioteca SQLite
+│  ├─ PianoBooster.Data.Tests   xUnit: ajustes, importación del .ini del C++ y biblioteca SQLite
+│  └─ PianoBooster.App.Tests    xUnit: traducciones (ts-to-resx.ps1 y Strings)          (fase 6.1)
 └─ tools/
+   ├─ ts-to-resx.ps1            Traducciones del C++ (.ts) → src/PianoBooster.App/translations/*.resx (fase 6.1)
    ├─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
    ├─ MakeSyntheticMidi/        Escribe los MIDI sintéticos de las pruebas
    ├─ PlaySong/                 Consola: reproducir (listen) o tocar (follow...) un MIDI  (fase 2)
@@ -106,7 +108,8 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
    5.1 biblioteca SQLite · 5.2 diálogo de la biblioteca · 5.3 `SectionPlayer` y piano roll ·
    5.4 editor de secciones · 5.5 diálogo MIDI · 5.6 teclado · 5.7 preferencias ·
    5.8 detalles de la canción.
-6. **Cierre.** Traducciones (`.ts` → `.resx`, script), `dotnet publish` autocontenido
+6. **Cierre**, en subfases (una sesión cada una, ver §12): 6.1 script `.ts` → `.resx` y
+   `Strings.Tr` · 6.2 aplicar `General/lang` · 6.3 `dotnet publish` autocontenido
    (sustituye a `tools/package-windows.sh`).
 
 ## 5. Reglas del port
@@ -136,7 +139,8 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 5.7 | **hecha** (22 nov 2026) | `PreferencesDialog` (`GuiPreferencesDialog`). Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.7 |
 | 5.8 | **hecha** (22 nov 2026) | `SongDetailsDialog` (`GuiSongDetailsDialog`); se borra `NotPortedYet`. Sin pruebas nuevas (es interfaz): las 128 siguen en verde; probado en la app. Ver §11.8 |
 | **5** | **hecha** (22 nov 2026) | Las 8 subfases (§11). Ya no queda ningún diálogo "not ported yet" en la app |
-| 6 | pendiente | |
+| 6.1 | **hecha** (22 nov 2026) | `tools/ts-to-resx.ps1`, 18 `Strings.<idioma>.resx` (satélites) y `Strings` con `ResourceManager`. Proyecto nuevo `PianoBooster.App.Tests`: 5 pruebas nuevas en verde y las 128 anteriores sin cambios. Ver §12.1 |
+| 6 | en curso | Subfases en §12 |
 
 ## 7. Fase 1: lo hecho
 
@@ -409,7 +413,7 @@ Se ha pasado de Avalonia 11.3.23 a **12.1.6** (la app, `tools/ScoreWindow`) y Sk
 | `MessageDialog.cs` | `QMessageBox`, `QInputDialog` | Información, aviso, pregunta Sí/No, texto y número (`GetInt`, desde 5.5) |
 | `HtmlText.cs` | texto enriquecido de Qt | Avalonia no tiene control HTML: entiende lo que usa PianoBooster (`h1`-`h3`, `p`, `blockquote`, `b`, `i`, `br`, `a`, `center`, tablas sencillas). Lo usan la ayuda, "acerca de" y la página del tutor |
 | `KeepDisplayOnPlatform.cs` | `KeepDisplayOn.cpp` | Da sus acciones a `Core.KeepDisplayOn`. Ver abajo |
-| `Strings.cs` | `tr()` | Devuelve el texto en inglés hasta la fase 6 |
+| `Strings.cs` | `tr()` | Desde 6.1, las traducciones de `translations/Strings.<idioma>.resx` (ver §12.1); el idioma se elige en 6.2 |
 | `images/` | `src/images` | `play`, `stop`, `play-from-start`, `flag`, `pianobooster` (.png/.ico) |
 
 **Proyecto `src/PianoBooster.Data`** (sin interfaz; en la fase 5 tendrá también la biblioteca):
@@ -897,3 +901,180 @@ un texto fijo, no el canal elegido).
 
 **Sin probar:** canciones de una sola pista o sin canción cargada (combos solo con "No channel assigned"), el efecto en el
 juego con un teclado MIDI real, macOS/Linux y escalas distintas de 100 %.
+
+## 12. Para retomar: fase 6 (subfases)
+
+La fase 6 se divide en tres subfases, cada una **en una sesión nueva** sin el contexto de las demás. Orden
+obligado: 6.2 necesita 6.1. La 6.3 es independiente (si se hace después de 6.1, los ensamblados satélite entran
+solos en la publicación).
+
+### Lo que hace el C++ (para no tener que volver a mirarlo)
+
+- **Ficheros.** `translations/pianobooster_<código>.ts` (91 idiomas + `pianobooster_blank.ts`, la plantilla) y
+  `langs.json` (nombre y nombre nativo por código). Formato TS 2.1: `<context><name>` (la clase: `QtWindow`,
+  `GuiSidePanel`, `CDraw`, `CMidiInfo`, `QMessageBox`, `QObject`...) con `<message>` = `<source>` + `<translation>`;
+  `type="unfinished"`/`"obsolete"`/`"vanished"` = sin traducir; `numerus="yes"` con varias `<numerusform>`.
+  Solo `es` tiene los textos nuevos del fork (531 mensajes; los demás, los 375 de `blank`). Completos (0 sin
+  traducir): `de`, `es`, `fr`, `pt`, `sv`, `uk`; casi: `it`, `cs`, `sk`.
+- **Qué idiomas se instalan.** `translations/CMakeLists.txt` compila con `lrelease` solo 18: `ca cs da de es fr gl
+  is it ja nb nl pl ru sk sv uk zh` (todos si `INSTALL_ALL_LANGS`; nunca `blank`). `package-windows.sh` copia
+  esos `.qm` y `langs.json` a `translations/` junto al ejecutable.
+- **El mismo texto cambia según el contexto** en 14 idiomas, sobre todo los nombres de nota: `B` → `H` en
+  `de`/`cs` en un contexto y `B` en otro; `C`/`F`/`G` → `Do`/`Fa`/`Sol` en `pt`/`uk` en un contexto y no en otro;
+  `None` → `Keine`/`Keines`/`Nicht ausgewählt` en `de`. El resto son variantes sin importancia (`Midi`/`MIDI`).
+- **Cargar** (`QtWindow::refreshTranslate()`, `QtWindow.cpp:887`; se llama en el constructor y después del diálogo
+  de preferencias): `CSettings::selectedLangauge()` = `General/lang` o, si está vacío,
+  `QLocale::system().bcp47Name()` hasta el primer `_`. Quita y vuelve a instalar tres `QTranslator`:
+  `pianobooster_<idioma>` (en `translations/` junto al ejecutable; en Linux `Util::dataDir()/translations`, en macOS
+  `../Resources/translations`; si no, la carpeta del ejecutable), `music_<idioma>` (no existe en este repositorio) y
+  `qt_<idioma>` (botones de `QMessageBox`...). Después traduce **en vivo** la ventana principal: la primera vez
+  guarda los textos originales (`toolTip`, `whatsThis`, `windowTitle`, `statusTip` de los widgets y `text` de las
+  `QAction`) y les aplica `tr()`; luego `m_sidePanel->updateTranslate()`, `m_topBar->updateTranslate()`
+  (`retranslateUi` + rehacer los combos), `updateWarningMessages()` y `updateTutorPage()`. Los diálogos se crean cada
+  vez, así que salen ya en el idioma nuevo.
+- **Combo de idiomas** (`GuiPreferencesDialog::initLanguageCombo`): `<System Language>`, `English` y uno por cada
+  `pianobooster_<código>.qm` de la carpeta (salvo `blank`), con el nombre nativo de `langs.json`.
+- **Empaquetar** (`tools/package-windows.sh`, MSYS2): `pianobooster.exe`, `BoosterMusicBooks.zip`,
+  `fonts/*.ttf`, `translations/*.qm` + `langs.json`, `README.md`, `license.txt`, `gplv3.txt`, `Changelog.txt`;
+  `windeployqt6` y, repitiendo `ldd` hasta que no aparezca nada nuevo, todas las DLL de `ucrt64/bin` (FluidSynth y
+  sus dependencias). Zip `PianoBooster-<versión>-win64.zip` con `Compress-Archive`. **No lleva SoundFont**: el C++
+  usa la primera `*.sf2` de `soundfont/` junto al ejecutable (`CSettings::setupDefaultSoundFont()`, ya portado en
+  `Settings.SetupDefaultSoundFont`).
+
+### Cómo empezar cualquier subfase
+
+1. Leer de este documento solo: §2, §3, §5, §6, este §12 entero y, de §10, las tablas de ficheros, "Hilos" y
+   "Eventos de Qt en Avalonia". No hace falta leer §7–§9 ni §11 (salvo §11.7 en la 6.2).
+2. Rama nueva desde `main` (`git switch -c phase-6.N-<nombre>`).
+3. Leer solo los ficheros C++ del apartado (en `C:\Git\PianoBosterMigration\PianoBooster`, solo lectura) y los C#
+   que se citan.
+4. Reglas de la fase 5: nombres del C++, textos con `Strings.Tr`, mismas claves de ajustes, 0 avisos nuevos en
+   `dotnet build PianoBooster.sln` y `dotnet test PianoBooster.sln` en verde.
+5. Probar en la app con `--settings=<scratchpad>\s.json` (nunca los ajustes reales), `Midi/Output` vacío (que no
+   suene nada) y `--Xquit-after=` largo (900 s si hay que manejarla); ratón con `mouse_event` absoluto
+   (`MOUSEEVENTF_MOVE|ABSOLUTE`), clic solo si la ventana bajo el ratón es de la app, teclas solo si la ventana de
+   delante es de la app.
+6. Al terminar: marcar la subfase en §6, añadir su "Lo hecho" debajo del apartado, commit
+   `Port PianoBooster to .NET: phase 6.N, ...` y merge a `main` con fast-forward.
+
+### 12.1 Script `.ts` → `.resx` y `Strings.Tr` con `ResourceManager` (rama `phase-6.1-resx`)
+
+- **C++:** `translations/*.ts`, `translations/CMakeLists.txt` (la lista de 18), `tools/lupdate.sh`; `QObject::tr`,
+  `tr(..., nullptr, n)` (plurales) y `QCoreApplication::translate(contexto, texto)`.
+- **C#:** nuevo `tools/ts-to-resx.ps1`; `src/PianoBooster.App/Strings.cs`, `PianoBooster.App.csproj`; nuevos
+  `src/PianoBooster.App/translations/Strings.<código>.resx`; pruebas en un proyecto nuevo
+  `tests/PianoBooster.App.Tests` (referencia a la app; si da problemas por ser `WinExe` de Avalonia, mover
+  `Strings` a `PianoBooster.Data` y probarlo en `Data.Tests`; decidirlo al empezar).
+- **Script** (PowerShell 5.1, sin herramientas de Qt): lee los `.ts` de la carpeta del C++ (por defecto los 18 de
+  `CMakeLists.txt`; `-All` para todos menos `blank`) y escribe un `.resx` por idioma. Se saltan los mensajes sin
+  traducir y las traducciones vacías (en Qt también salen en inglés). Claves:
+  - `texto` (el `<source>` tal cual) con la traducción del **primer** contexto en que aparece;
+  - además `contexto|texto` solo cuando ese texto tiene traducciones distintas según el contexto (los casos de
+    arriba); el script los lista al terminar;
+  - plurales: `texto#0`, `texto#1`... (una por `<numerusform>`).
+  Los códigos de Qt se pasan a culturas de .NET (`zh_HK` → `zh-HK`, `bs_BA` → `bs-BA`, `sr@latin` → `sr-Latn`;
+  los que .NET no conozca se avisan y se saltan). Los `.resx` generados se guardan en el repositorio (no hace
+  falta el C++ para compilar) y se regeneran con el script.
+- **`Strings`:** un `ResourceManager` sobre los `.resx` y una `Culture` (la elige 6.2; hasta entonces la invariante,
+  inglés). `Tr(text)` = `GetString(text, Culture) ?? text`. Nuevo `Translate(context, text)`
+  (= `QCoreApplication::translate`): busca `contexto|texto` y, si no, `texto`. `TrPlural` busca `texto#k` con la
+  regla de plural del idioma (la de Qt para los idiomas con plurales traducidos; hoy solo `es`: 2 formas,
+  `n != 1`); si no hay, el inglés de ahora. No cambia ninguna llamada existente. El `.csproj` añade los
+  `EmbeddedResource` (MSBuild genera los satélites `<código>\PianoBooster.resources.dll`).
+- **Pruebas:** el script sobre un `.ts` pequeño de prueba (sin traducir, obsoleto, plural, conflicto de contexto);
+  `Strings` con `es` y `de`: un texto normal, `Translate("CDraw", "B")` en `de`, el plural en `es` y un texto sin
+  traducción (sale en inglés). Contar cuántos textos de `Strings.Tr` del C# no están en el `.ts` de `es` (los nuevos
+  del port) y anotarlos en "Lo hecho".
+- **Sin cambio visible en la app** (la cultura sigue siendo la invariante): bastan las pruebas y ver que arranca.
+
+#### Lo hecho (6.1)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `tools/ts-to-resx.ps1` | `lrelease` (`translations/CMakeLists.txt`) | PowerShell 5.1, solo `System.Xml`. `-TsDir` (por defecto `..\..\PianoBooster\translations`), `-OutDir`, `-All`, `-Languages`. Escribe además `Strings.resx` vacío (los recursos neutros = inglés) y borra los `Strings.*.resx` que ya no salen. Avisa si un `<source>` tiene `\|` (hoy ninguno) |
+| `App/translations/Strings.<idioma>.resx` | `translations/pianobooster_<código>.ts` | Generados (no editar): los 18 de `CMakeLists.txt`, de 213 (`ca`) a 496 (`es`) textos. MSBuild los incrusta solo; salen `<idioma>/PianoBooster.resources.dll` |
+| `App/Strings.cs` | `QObject::tr`, `QCoreApplication::translate`, `QTranslator` | `ResourceManager` + `Culture` (invariante por defecto). `Tr`, `Translate(context, text)`, `TrPlural(text, n)` y `PluralForm` (reglas de los 18 idiomas) |
+| `App/PianoBooster.App.csproj` | | Comentario de los `.resx` e `InternalsVisibleTo` para las pruebas |
+| `App/SidePanel.axaml.cs`, `App/SectionEditor.axaml.cs` | `tr("%n bar(s)", nullptr, n)` | `TrPlural("%n bar(s)", n)`: misma clave que el `.ts` |
+| `tests/PianoBooster.App.Tests/TranslationTests.cs` | | 5 pruebas: inglés, `es`/`de` (y `es-ES` → `es`), por contexto (`de`: `CDraw\|B` = `H`, `GuiTopBar\|B` = `B`), plurales y el script sobre un `.ts` pequeño (sin traducir, `unfinished`, obsoleto, `vanished`, plural, conflicto, entidades, `blank`, `.resx` sobrante) |
+
+- Conflictos por contexto en los 18 (el script los lista): nombres de nota en `cs`/`de` (`B` → `H` en `CDraw`) y `uk`
+  (`C`/`F`/`G`/`A`/`B` en solfeo en `CDraw`), `None` en `cs`/`de`, y variantes (`Midi`/`MIDI`, `Form`, `Song:` en `nb`,
+  `Drums` y `Whole song` en `es`/`gl`). En `es`, `Bar` y `Beat` salen dos veces en el mismo contexto (`GuiSectionEditor`)
+  con mayúscula y minúscula; se queda la primera.
+- 168 textos literales de `Strings.Tr`/`TrPlural` en el C#; 15 no están en `pianobooster_es.ts`: `OK`, `Cancel`, `Yes`,
+  `No`, `Discard` (en C++ vienen de `qt_<idioma>.qm`, que el zip de Windows no lleva: `--no-translations`) y textos que
+  el C++ tampoco tiene en el `.ts` (la tabla de atajos, `Action`/`Key`, `SoundFont Files`, `Drums+M`, el copyright, la
+  página de FluidSynth, `The library is not available.`). Salen en inglés, como en el C++.
+- Probado: `dotnet build` sin avisos, 133 pruebas en verde, la app arranca igual que antes (en inglés aunque
+  `General/lang` sea `es`, hasta 6.2).
+
+**Diferencias deliberadas con el C++:**
+- `Tr(text)` no tiene contexto: un texto traducido solo en otro contexto también se traduce (en Qt saldría en inglés).
+  Solo cambia algo en los textos de la lista de conflictos, que en 6.2 usan `Translate` con su contexto.
+- Las `unfinished` con texto **sí** se usan (lo que hace `lrelease` sin `-nounfinished`; arriba decía que se saltaban):
+  26 en `nb`, 6 en `zh`, 0–2 en los demás.
+- El panel lateral decía "40 bars"/"1 bar"; ahora, como el C++ sin traducción, "40 bar(s)".
+
+**Sin probar:** las reglas de plural de los idiomas de 3 formas (`cs`, `sk`, `pl`, `ru`, `uk`) con traducciones reales
+(ningún `.ts` de esos idiomas tiene plurales traducidos); compilar la app con los `.resx` de `-All` (el script sí:
+87 idiomas en una carpeta aparte, `sr@latin` → `sr-Latn`, `zh_HK` → `zh-HK`; salta con aviso `bs_BA`, que en .NET es
+`bs-Latn-BA`, y `wa`); el script en PowerShell 7 o fuera de Windows.
+
+### 12.2 Aplicar `General/lang` (rama `phase-6.2-apply-language`, necesita 6.1)
+
+- **C++:** `QtWindow::refreshTranslate()` (`QtWindow.cpp:887`), `CSettings::selectedLangauge()` (`Settings.h:158`),
+  `GuiSidePanel::updateTranslate()`, `GuiTopBar::updateTranslate()`, `GuiPreferencesDialog::initLanguageCombo()`,
+  `CDraw` (nombres de nota), `CGLView` (`Accuracy:`, `Song:`, `Bar:`), `CConductor`/`CMidiInfo` (`tr("None")`...).
+- **C#:** `MainWindow.axaml.cs` (`RefreshTranslate`), `Settings.cs` (`SelectedLangauge`, mismo nombre con la errata),
+  `SidePanel.axaml.cs`, `TopBar.axaml.cs`, `PreferencesDialog.axaml.cs` (`InitLanguageCombo`), los demás diálogos
+  (traducir sus textos XAML al crearse), `Strings.cs`; en Rendering/Core solo se les dan los textos desde la app
+  (`Draw.NoteNames`, `ViewRenderer.AccuracyText/SongText/BarText`, `Conductor.Translate`, `MidiInfo.Translate`).
+- **`RefreshTranslate`** como el C++: `Strings.Culture` = `SelectedLangauge()` (vacío → `CultureInfo.CurrentUICulture`;
+  `ResourceManager` ya cae de `es-ES` a `es`); los textos de Rendering/Core con `Strings.Translate` y su contexto del
+  C++ (`CDraw`, `CGLView`, `CConductor`, `CMidiInfo`); `SidePanel.UpdateTranslate()`, `TopBar.UpdateTranslate()`,
+  `UpdateWarningMessages()`, `UpdateTutorPage()`.
+- **Textos de los XAML** (unos 190: `Text`, `Content`, `Header`, `Title`, `ToolTip.Tip`, elementos fijos de combos):
+  un ayudante `Strings.TranslateTree(control)` que recorre el árbol lógico, guarda la primera vez el texto original
+  de cada propiedad (como `listWidgetsRetranslateUi`) y le pone `Tr(original)`. Lo llaman `MainWindow.RefreshTranslate`
+  (en vivo, como el C++) y cada diálogo justo después de `InitializeComponent()`, antes de rellenar datos, para no
+  tocar nunca nombres de canciones o ficheros. Los textos que el código ya pone con `Strings.Tr` se rehacen en los
+  `UpdateTranslate` donde el C++ los rehace.
+- **Combo de idiomas:** en vez del patrón `pianobooster_<código>.qm`, un elemento por cada código de `langs.json` para
+  el que exista `ResourceManager.GetResourceSet(cultura, true, false)` (funciona también si algún día se publica en
+  un solo fichero). Revisar la diferencia deliberada de 5.7 (añadir al combo un `General/lang` que no esté): dejarla
+  solo para un idioma no instalado y anotarlo.
+- **Probar en la app:** `General/lang` = `es` en el JSON de prueba → menús, panel, barra, diálogos y nombres de nota en
+  español; cambiar a `de` en preferencias → la ventana cambia en vivo y la nota `B` sale como en el C++;
+  `<System Language>`; un idioma incompleto (`ca`) mezcla inglés donde falta, como Qt.
+- **Fuera de alcance** (anotar): `music_<idioma>` (no existe), los textos propios de Avalonia (menú contextual de los
+  cuadros de texto), derecha a izquierda (`ar`, `he`, que no están entre los 18).
+
+### 12.3 `dotnet publish` autocontenido para Windows (rama `phase-6.3-publish`)
+
+- **C++:** `tools/package-windows.sh`, `src/CMakeLists.txt` (qué se instala junto al ejecutable),
+  `CSettings::setupDefaultSoundFont()`.
+- **C#:** nuevo `tools/package-windows.ps1`; `PianoBooster.App.csproj` (propiedades de publicación,
+  `BoosterMusicBooks.zip` como contenido: hoy no se copia a la salida), `Directory.Build.props` (versión),
+  `README.md`; se mira `FluidSynthNative.cs` (ya busca la DLL en `AppContext.BaseDirectory`) y
+  `Settings.SetupDefaultSoundFont` (ya busca `soundfont/*.sf2`).
+- **Script** (PowerShell 5.1; `-OutDir`, `-SoundFont <fichero.sf2>`, `-FluidSynthDir` con `C:\msys64\ucrt64\bin` por
+  defecto):
+  1. `dotnet publish src\PianoBooster.App -c Release -r win-x64 --self-contained` a una carpeta. No un solo fichero
+     (las DLL de FluidSynth tienen que ir sueltas, y así es el zip del C++) ni recortado (Avalonia no lo garantiza);
+     `ReadyToRun` si no da avisos.
+  2. Junto al ejecutable, lo mismo que el C++: `BoosterMusicBooks.zip` (copiado al repositorio desde `music/` del
+     C++, 512 KB, para no depender de él), `fonts/DejaVuSans.ttf` (ya lo copia Rendering), `translations/langs.json`,
+     los satélites de 6.1, `README.md`, `LICENSE`/`NOTICE` del port y el `Changelog.txt` del C++.
+  3. FluidSynth: `libfluidsynth-3.dll` y, repitiendo `objdump -p` (de `ucrt64/bin`) hasta que no aparezca nada
+     nuevo, todas sus dependencias de esa carpeta (`libsndfile-1`, `SDL3`, `libportaudio`, `libgomp-1`,
+     `libstdc++-6`, `libreadline8`...), como el bucle de `ldd` del C++.
+  4. SoundFont: si se da `-SoundFont`, se copia a `soundfont/` (ver decisión abajo).
+  5. Zip `PianoBooster-<versión>-win64.zip` (versión de `Directory.Build.props`) con `Compress-Archive`.
+- **Probar:** generar el zip, descomprimirlo en el scratchpad y arrancar **esa copia** con `--settings=` en el
+  scratchpad y `Midi/Output` vacío: se ve la partitura, salen los idiomas en preferencias y la salida FluidSynth
+  aparece en el diálogo MIDI (sin elegirla, para que no suene). Comprobar con `--log` (o la lista de módulos del
+  proceso) que la DLL de FluidSynth se carga de la carpeta descomprimida y no de `C:\msys64`.
+- **Decisiones a confirmar antes de 6.3:** (a) si el zip lleva una SoundFont por defecto (p. ej. `FluidR3_GM.sf2`,
+  licencia MIT, ~141 MB; la de `C:\Users\...\Music\Soundfonts` de este equipo) o solo con `-SoundFont`; (b) si
+  `tools/package-windows.ps1` es lo único o también hace falta un `.sh`.

@@ -32,6 +32,13 @@
     <AvaloniaResource Include="images\*.png" />
     <!-- translations/langs.json of the C++ code (the names of the languages; installed next to the program) -->
     <None Include="translations\langs.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- translations/Strings.<culture>.resx (made from translations/*.ts of the C++ code by
+         tools/ts-to-resx.ps1) are embedded by default: one satellite assembly per language,
+         <culture>/PianoBooster.resources.dll, read by Strings -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PianoBooster.App.Tests" />
   </ItemGroup>
 
 </Project>
