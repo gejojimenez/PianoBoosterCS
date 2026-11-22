@@ -16,9 +16,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.23" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
+    <!-- The practice view of the application (it was here in phase 3) -->
+    <Compile Include="..\..\src\PianoBooster.App\ScoreView.cs" Link="ScoreView.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
   </ItemGroup>
 
 </Project>

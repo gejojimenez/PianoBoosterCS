@@ -35,7 +35,8 @@ ns (corrección de la 1.3.8). La entrada MIDI se sondea dentro de `task()`.
 - **.NET**. Se centraliza en `Directory.Build.props` (`TargetFramework`). Ahora es `net9.0`
   porque es el SDK instalado en este equipo; al instalar el SDK de .NET 10 (LTS) basta con
   cambiarlo a `net10.0` en ese fichero.
-- **Interfaz: Avalonia** (XAML, multiplataforma, dibuja con Skia en la GPU).
+- **Interfaz: Avalonia** (XAML, multiplataforma, dibuja con Skia en la GPU). Desde la fase 4,
+  **Avalonia 12.1.6** con **SkiaSharp 3.119.4** (la que usa; ver §10).
 - **Ventana de práctica: SkiaSharp** mediante `ICustomDrawOperation`, con
   `TopLevel.RequestAnimationFrame` (sincronizado con el refresco, equivalente a `frameSwapped`).
   - `glRectf` → `DrawRect`; `GL_LINES/GL_LINE_STRIP` → `DrawLine`/`SKPath`
@@ -65,17 +66,19 @@ PianoBoosterCS/
 │  ├─ PianoBooster.Core         Sin interfaz: MIDI, Song, Conductor, Rating, SongMap...
 │  ├─ PianoBooster.Midi         IMidiInput/IMidiOutput + implementaciones          (fase 2)
 │  ├─ PianoBooster.Rendering    Draw/Score/Scroll/Piano/GlView sobre SKCanvas       (fase 3)
-│  ├─ PianoBooster.Data         Biblioteca SQLite, ajustes JSON                     (fase 5)
-│  └─ PianoBooster.App          Avalonia                                            (fase 4)
+│  ├─ PianoBooster.Data         Ajustes JSON (fase 4); biblioteca SQLite            (fase 5)
+│  └─ PianoBooster.App          Avalonia: ventana principal, ajustes de CSettings   (fase 4)
 ├─ tests/
-│  ├─ PianoBooster.Core.Tests   xUnit: pruebas de referencia contra el C++
+│  ├─ PianoBooster.Core.Tests   xUnit: pruebas de referencia contra el C++ (+ MidiInfo)
 │  ├─ PianoBooster.Midi.Tests   xUnit: mensajes MIDI, FluidSynth sin SoundFont, hilo del Conductor
-│  └─ PianoBooster.Rendering.Tests  xUnit: fotogramas de canciones dibujados en un bitmap (PNG)
+│  ├─ PianoBooster.Rendering.Tests  xUnit: fotogramas de canciones dibujados en un bitmap (PNG)
+│  └─ PianoBooster.Data.Tests   xUnit: fichero de ajustes e importación del .ini del C++
 └─ tools/
    ├─ RefDump/                  Volcador C++ (compila los .cpp originales sin interfaz)
    ├─ MakeSyntheticMidi/        Escribe los MIDI sintéticos de las pruebas
    ├─ PlaySong/                 Consola: reproducir (listen) o tocar (follow...) un MIDI  (fase 2)
-   └─ ScoreWindow/              Ventana Avalonia mínima con la partitura; mide la fluidez (fase 3)
+   └─ ScoreWindow/              Ventana Avalonia mínima con la partitura; mide la fluidez (fase 3;
+                                usa el ScoreView de la app)
 ```
 
 **Hilos (a partir de la fase 2):**
@@ -97,8 +100,10 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 3. **Ventana de práctica con Skia.** Partitura, desplazamiento, barra de precisión,
    teclado. Medir la fluidez como en la 1.3.8 (desviación de un movimiento uniforme).
 4. **Ventana principal.** Panel lateral, barra superior, ajustes, menús.
-5. **Resto de la interfaz.** Biblioteca, secciones, editor de secciones y piano roll
-   (QPainter → Skia), diálogos de MIDI, teclado, preferencias, detalles de canción.
+5. **Resto de la interfaz**, en subfases independientes (una sesión cada una, ver §11):
+   5.1 biblioteca SQLite · 5.2 diálogo de la biblioteca · 5.3 `SectionPlayer` y piano roll ·
+   5.4 editor de secciones · 5.5 diálogo MIDI · 5.6 teclado · 5.7 preferencias ·
+   5.8 detalles de la canción.
 6. **Cierre.** Traducciones (`.ts` → `.resx`, script), `dotnet publish` autocontenido
    (sustituye a `tools/package-windows.sh`).
 
@@ -119,8 +124,15 @@ Hasta entonces, el Core es de un solo hilo, como el original, y se maneja llaman
 | 1 | **hecha** (22 nov 2026) | 79 pruebas en verde: 72 escenarios idénticos al C++ y 7 unitarias. Ver §7 |
 | 2 | **hecha** (22 nov 2026) | `PianoBooster.Midi` + `tools/PlaySong`; 7 pruebas nuevas en verde y las 79 de la fase 1 sin cambios. Ver §8 |
 | 3 | **hecha** (22 nov 2026) | `PianoBooster.Rendering` + `tools/ScoreWindow`; 10 pruebas nuevas en verde y las 86 anteriores sin cambios. Fluidez 0,03 px (C++ 1.3.8: 0,24). Ver §9 |
-| 4 | pendiente | Ver §10 |
-| 5 | pendiente | |
+| 4 | **hecha** (22 nov 2026) | `PianoBooster.App` + `PianoBooster.Data`; Avalonia 12.1.6. 8 pruebas nuevas en verde y las 96 anteriores sin cambios. Ver §10 |
+| 5.1 | pendiente | Biblioteca SQLite (`Library`). Ver §11.1 |
+| 5.2 | pendiente | `GuiLibraryDialog`. Necesita 5.1. Ver §11.2 |
+| 5.3 | pendiente | `SectionPlayer` + `GuiPianoRoll`. Ver §11.3 |
+| 5.4 | pendiente | `GuiSectionEditor`. Necesita 5.1 y 5.3. Ver §11.4 |
+| 5.5 | pendiente | `GuiMidiSetupDialog`. Ver §11.5 |
+| 5.6 | pendiente | `GuiKeyboardSetupDialog`. Ver §11.6 |
+| 5.7 | pendiente | `GuiPreferencesDialog`. Ver §11.7 |
+| 5.8 | pendiente | `GuiSongDetailsDialog`. Ver §11.8 |
 | 6 | pendiente | |
 
 ## 7. Fase 1: lo hecho
@@ -351,19 +363,243 @@ fase (sustituir el lock por una foto) ya no es necesario: el lock solo dura lo q
 - Con un teclado MIDI real (sigue sin haber uno en este equipo); el modo seguir se ha probado con el
   tabulador en las pruebas.
 
-## 10. Para retomar: fase 4
+## 10. Fase 4: lo hecho
 
-Leer este documento. Luego, la ventana principal en Avalonia (`src/PianoBooster.App`):
+### Comandos
 
-1. Leer `QtWindow.*`, `GuiSidePanel.*`, `GuiTopBar.*` (y sus `.ui`), `Settings.*` y `QtMain.cpp` del C++.
-2. `src/PianoBooster.App`: ventana principal con la vista de la partitura (mover `ScoreView` de
-   `tools/ScoreWindow` a la app; `ScoreWindow` puede quedarse como herramienta de medida usándola),
-   panel lateral (pistas, mano, modo, compases...), barra superior (velocidad, transporte, compás,
-   desde/hasta), menús y atajos de teclado de `QtWindow`.
-3. Ajustes: implementación de `IPianoSettings` que guarde en JSON lo que guarda `CSettings` con
-   `QSettings` (mismas claves); el mensaje de aviso (`getWarningMessage`) va a
-   `ViewRenderer.WarningMessage`. `songEventUpdated` (bits de eventos) → `ScoreView.SongEventUpdated`.
-4. Los textos (`tr()`) quedan en inglés hasta la fase 6: `Draw.NoteNames` y los textos de `ViewRenderer`
-   ya se pueden cambiar.
-5. Valorar Avalonia 12 (hay 12.1.x en NuGet; comprobar qué SkiaSharp usa y si cambia
-   `ICustomDrawOperation`): en la fase 3 se usó 11.3 por estabilidad de la API.
+```powershell
+dotnet build PianoBooster.sln
+dotnet test PianoBooster.sln
+dotnet run --project src\PianoBooster.App
+dotnet run --project src\PianoBooster.App -- <fichero.mid>
+dotnet run --project src\PianoBooster.App -- --settings=<carpeta>\pruebas.json --Xquit-after=8 --Xscreenshot=<carpeta>\v.png <fichero.mid>
+```
+
+El ejecutable se llama `PianoBooster.exe`. Acepta las mismas opciones que el C++ (`-d`, `--log`,
+`--Xtick-rate=`, `--lights`, `-X1`...) y tres nuevas para probar sin tocar los ajustes del usuario:
+`--settings=<fichero.json>` (otro fichero de ajustes), `--Xquit-after=<s>` (se cierra sola) y
+`--Xscreenshot=<fichero.png>` (guarda una imagen de la ventana antes de cerrarse).
+
+### Avalonia 12
+
+Se ha pasado de Avalonia 11.3.23 a **12.1.6** (la app, `tools/ScoreWindow`) y SkiaSharp de 2.88.9 a
+**3.119.4** (la que usa Avalonia 12; también en `PianoBooster.Rendering` y sus pruebas):
+- `PianoBooster.Rendering` compila con SkiaSharp 3 sin cambios ni avisos y sus 10 pruebas siguen en
+  verde. `ICustomDrawOperation` e `ISkiaSharpApiLeaseFeature` no cambian: `ScoreView` es el de la fase 3.
+- Avalonia 12 trae paquetes para `net8.0` y `net10.0`; con `net9.0` se usan los de `net8.0`.
+- Fluidez (`ScoreWindow`, mismas condiciones que en §9, 15 s): RMS 0,030 px (antes 0,032); con la hora
+  del dibujo 0,052 px (antes 0,078); dibujar un fotograma, media 0,40 ms (antes 0,29); lock para la
+  foto, media 0,10 ms (igual).
+
+### Proyecto `src/PianoBooster.App` (Avalonia 12.1.6, XAML + código detrás)
+
+| Fichero C# | Origen C++ | Notas |
+|---|---|---|
+| `Program.cs` | `QtMain.cpp`, `QtWindow::decodeCommandLine()` | Las opciones se leen antes de crear la app; el fichero MIDI se comprueba en la ventana (como en C++). `Log.Output` → `pb.log` con `--log`, si no, la consola |
+| `App.axaml(.cs)` | `QApplication` | Tema Fluent claro y compacto (los colores de la lista de pistas, `Qt::darkBlue` y `Qt::lightGray`, son para fondo claro). Ventana maximizada al abrir |
+| `MainWindow.axaml(.cs)` | `QtWindow.*`, constructor e `initializeGL()` de `CGLView` | Menús, atajos, ficheros recientes, ayuda, acerca de, atajos del teclado, página del tutor, tamaño y posición de la ventana. Crea `MidiDevice`, `Song`, `Score`, `ConductorThread` y `ScoreView` |
+| `SidePanel.axaml(.cs)` | `GuiSidePanel.*` (+ `.ui`), `CTrackList::changeListWidgetItemView()` | Cabecera de la canción, secciones, habilidad, manos, pistas y volúmenes. Los `QGroupBox` son `Border` con título |
+| `TopBar.axaml(.cs)` | `GuiTopBar.*` (+ `.ui`) | El "%" del velocímetro es un texto aparte (el sufijo de `QSpinBox` no existe en `NumericUpDown`) |
+| `LoopingPopup.axaml(.cs)` | `GuiLoopingPopup.*` (+ `.ui`) | Es el contenido de un `Popup` de la barra superior (en C++ una ventana `Qt::Popup`) |
+| `Settings.cs` | `Settings.*` (`CSettings`) | Implementa `IPianoSettings` sobre `SettingsStore`. Mismas claves y valores por defecto |
+| `ScoreView.cs` | `GlView.*` (ritmo de fotogramas) | Movido desde `tools/ScoreWindow` (que lo enlaza). Nuevo: `StopTimerEvent`/`StartTimerEvent` y `WarningMessageSource` (el aviso de `getWarningMessage`, leído cada fotograma) |
+| `MessageDialog.cs` | `QMessageBox`, `QInputDialog` | Información, aviso, pregunta Sí/No y texto |
+| `HtmlText.cs` | texto enriquecido de Qt | Avalonia no tiene control HTML: entiende lo que usa PianoBooster (`h1`-`h3`, `p`, `blockquote`, `b`, `i`, `br`, `a`, `center`, tablas sencillas). Lo usan la ayuda, "acerca de" y la página del tutor |
+| `KeepDisplayOnPlatform.cs` | `KeepDisplayOn.cpp` | Da sus acciones a `Core.KeepDisplayOn`. Ver abajo |
+| `MidiSetupDialogProvisional.cs` | parte de `GuiMidiSetupDialog::accept()` | **Provisional**: elegir entrada y salida MIDI hasta portar el diálogo en la fase 5 |
+| `Strings.cs` | `tr()` | Devuelve el texto en inglés hasta la fase 6 |
+| `images/` | `src/images` | `play`, `stop`, `play-from-start`, `flag`, `pianobooster` (.png/.ico) |
+
+**Proyecto `src/PianoBooster.Data`** (sin interfaz; en la fase 5 tendrá también la biblioteca):
+
+| Fichero C# | Origen | Notas |
+|---|---|---|
+| `SettingsStore.cs` | `QSettings` | Un objeto JSON plano con las claves de `QSettings` (`"Midi/Output"`...). Guarda el tipo (texto, número, sí/no, lista, rectángulo) y convierte al leer como `QVariant` (`toString`, `toInt`, `toBool`, `toStringList`, `toRect`...). Una lista leída como texto da los elementos separados por `\|` (lo que espera `MidiDeviceBase.GetStringList`). Se guarda en cada cambio (fichero temporal y `Move`) |
+| `QtIniReader.cs` | formato `IniFormat` de Qt | Lee el `.ini` del C++: secciones, `[General]`, escapes `%XX` y C, comillas, listas con comas, `@Rect`, `@Point`, `@Size`, `@Invalid()`. `@ByteArray`/`@Variant` (binario de Qt) se ignoran |
+
+El fichero es `%APPDATA%\PianoBooster\Piano Booster.json` (en Linux/macOS `~/.config/PianoBooster/`),
+junto al `Piano Booster.ini` y al `library.db` del C++. **La primera vez** (si no existe el `.json`)
+se importa el `.ini`; el `.ini` no se toca, así que el C++ y el port pueden convivir. Probado con una
+copia del `.ini` real de este equipo: salida FluidSynth, SoundFont, recientes y geometría correctos.
+
+**Cambios en otros proyectos:**
+- Core: `MidiInfo.cs` (port de `MidiInfo.*`, usa el `MidiByteReader` de `SongMap.cs`) y
+  `LibraryTypes.cs` (`SongSettings`, `SongPart` e `ISongLibrary`, la parte de `Library.h` que usan
+  la ventana y los ajustes; la implementación SQLite es de la fase 5). `Conductor.OpenMidiPort` pasa a
+  público (en C++ `CConductor` hereda de `CMidiDevice` y `openMidiPort` es público).
+- Rendering: SkiaSharp 3.119.4.
+- `tools/ScoreWindow`: Avalonia 12.1.6 y `ScoreView.cs` enlazado desde la app.
+
+### Hilos
+
+Todo el código de la interfaz corre en su hilo y toma el lock del `Song`
+(`ConductorThread.SyncRoot`, `lock (_sync)`) cada vez que lo usa; el lock es reentrante, así que las
+llamadas encadenadas del C++ (`TrackList.SetActiveHandsIndex` → `Settings.SetChannelHands` →
+`SidePanel.Refresh` → `TrackList.Refresh`) funcionan igual. El hilo del Conductor arranca en
+`Opened` (el `m_timer.start()` de `initializeGL()`). Los bits de eventos llegan por
+`ScoreView.SongEventUpdated` → `MainWindow.SongEventUpdated` (= `QtWindow::songEventUpdated`).
+
+`KeepDisplayOn`: el Conductor lo llama desde su hilo, pero `SetThreadExecutionState(ES_CONTINUOUS)`
+pertenece al hilo que lo llama (en C++ todo era el hilo de la interfaz), así que la app lo pasa al hilo
+de la interfaz con `Dispatcher.UIThread.Post`.
+
+### Eventos de Qt en Avalonia
+
+- `activated` de un `QComboBox` (solo lo que elige el usuario) → `SelectionChanged`, que también salta
+  cuando el código cambia la selección: se ignoran con un contador `_updating` (como `QSignalBlocker`).
+  `toggled` y `valueChanged` saltan en los dos casos, igual que en Qt.
+- Atajos (`QAction` con `setShortcut`): un manejador *tunnel* en la ventana, para que tengan
+  prioridad sobre el control con el foco, como en Qt. Los de los ajustes (`ShortCuts/...`) se leen
+  cada vez: un carácter (`"="`, `"{"`) se compara con el texto de la tecla (así `{` es Mayús+[ como en
+  Qt) y lo demás (`"F2"`, `"space"`) con `KeyGesture`. Como el `ShortcutOverride` de Qt, no se usan los
+  de un carácter si el foco está en un cuadro de texto, y ninguno mientras hay un menú abierto (en Qt el
+  menú se queda el teclado; sin esto la `p` de un menú hacía "PlayPause").
+- `keyPressEvent` (teclas del PC como piano) y el filtro de eventos de la barra superior (↑/↓ = velocidad)
+  → manejador *bubble* de la ventana, solo si nadie usó la tecla. Las repeticiones se ignoran con el
+  conjunto de teclas pulsadas (Avalonia no tiene `isAutoRepeat`).
+
+### Probado
+
+- Las 104 pruebas en verde: 83 del Core (79 de referencia sin cambios + 4 de `MidiInfo`), 7 de Midi,
+  10 de Rendering (con SkiaSharp 3) y 4 de Data.
+- La app abierta de verdad, con capturas: carga la canción de la línea de órdenes, panel lateral con
+  información (compás, tonalidad, tempo, duración, compases), pistas en azul/negrita, aviso
+  "ERROR NO SOUND" sin salida; con el `.ini` importado, sin aviso y con FluidSynth. Con `SendKeys`:
+  espacio arranca la música (botón en "stop", compases avanzando), `=` ×3 sube la velocidad a 112 %,
+  Ctrl+S abre el diálogo MIDI, Alt+H → P los atajos (tabla), Alt+H → H la ayuda (enlaces); clic en
+  "Start / Repeat" abre el popup.
+
+### Diferencias deliberadas con el C++
+
+- `stopTimerEvent()`/`startTimerEvent()` paran y arrancan el hilo del Conductor. Al arrancar, el tiempo
+  cuenta desde ese momento: el C++ seguía contando y daba al `Song` de golpe el tiempo que el diálogo
+  estuvo abierto.
+- Geometría de la ventana: Avalonia no deja fijar el tamaño "restaurado" de una ventana maximizada, así
+  que solo se aplica antes de mostrarla (el `readSettings()` de `init()` ya no la cambia). La posición
+  de Avalonia es la esquina exterior de la ventana y la de Qt la interior: al importar del `.ini` la
+  ventana restaurada queda unos píxeles más arriba. Se guarda en píxeles lógicos, como Qt.
+- `unzipBoosterMusicBooks()` fuera de Windows descomprime con `System.IO.Compression` en lugar de
+  ejecutar `unzip`. En Windows, como en C++, lo hace el instalador.
+- Los botones de las secciones usan símbolos (💾, 🗑) en lugar de los iconos estándar del estilo de Qt.
+- El botón "play from start" no es *checkable* (en Qt lo es, pero nunca se ve marcado de forma útil).
+- La página del tutor (`QTextBrowser`) se muestra con `HtmlText`, que solo entiende un HTML sencillo.
+- `refreshTranslate()` solo actualiza los avisos y la página del tutor (las traducciones, fase 6).
+
+### Pendiente de la fase 5 (en la app, marcado en el código)
+
+- Diálogos que aún muestran "not ported yet (phase 5)": biblioteca (Ctrl+B y botón "Library..."),
+  editor de secciones (Ctrl+E), detalles de la canción (Ctrl+D), teclado (Ctrl+K) y preferencias
+  (Ctrl+P). El diálogo MIDI (Ctrl+S) es el provisional.
+- **Sin biblioteca** (`ISongLibrary` es `null`, como `m_library == nullptr` en C++): no se guardan la
+  mano, la velocidad ni los canales de cada canción, ni la última canción de cada carpeta, ni se
+  importan los `pb.cfg`; las secciones del panel lateral están deshabilitadas. El código que los usa
+  ya está portado y comprueba `_library != null`.
+
+### Sin probar
+
+- Un teclado MIDI real (sigue sin haber uno), macOS y Linux, escalas de pantalla distintas de 100 %.
+- Abrir un fichero con el diálogo (`StorageProvider`) y los ficheros recientes: no se han automatizado
+  (sí `SetCurrentFile`, que se ve en el JSON).
+- Las páginas del tutor (`InfoPages`): las canciones de `TestData` no las tienen.
+- Los menús contextuales de la lista de pistas (mano derecha/izquierda) y los atajos de libro/canción
+  siguiente (necesitan una carpeta de libros).
+
+## 11. Para retomar: fase 5 (subfases)
+
+La fase 5 se divide en subfases que se pueden hacer **cada una en una sesión nueva**, sin el contexto
+de las demás. Orden obligado solo donde se indica (5.2 y 5.4 necesitan 5.1; 5.4 necesita 5.3); el resto
+es independiente.
+
+### Cómo empezar cualquier subfase
+
+1. Leer de este documento solo: §2, §3, §5, §6, el apartado de la subfase y, de la fase 4 (§10), las
+   tablas de ficheros, "Hilos", "Eventos de Qt en Avalonia" y "Pendiente de la fase 5". No hace falta
+   leer §7–§9.
+2. Rama nueva desde la rama principal con lo de la subfase anterior (`git switch -c phase-5.N-<nombre>`).
+3. Leer solo los ficheros C++ del apartado (en `C:\Git\PianoBosterMigration\PianoBooster\src`, solo
+   lectura) y los C# que se citan.
+4. Convenciones ya fijadas en la fase 4 (no hay que redescubrirlas):
+   - Un diálogo = `NombreDialog.axaml` + `.axaml.cs` en `src/PianoBooster.App`, con los mismos nombres de
+     controles que el `.ui` (`x:Name`); los manejadores `on_x_y` → `OnXY`. Abrir con
+     `await dialog.ShowDialog(this)` desde `MainWindow`.
+   - Textos con `Strings.Tr(...)` (inglés hasta la fase 6). `QMessageBox`/`QInputDialog` →
+     `MessageDialog`.
+   - Ajustes: `Settings` (`Value`, `SetValue`, `Contains`, `StringListValue`; `Settings.Store` para
+     `Remove` y rectángulos). Mismas claves que el C++.
+   - El `Song` solo con su lock: `lock (_sync)` (`ConductorThread.SyncRoot`). Mientras el diálogo está
+     abierto, `MainWindow` ya hace `StopTimerEvent()`/`StartTimerEvent()` donde el C++ lo hace.
+   - `activated` de Qt → `SelectionChanged` con el contador `_updating` para ignorar los cambios del código.
+5. Sustituir en `MainWindow.axaml.cs` la llamada `NotPortedYet(...)` del diálogo por el diálogo real.
+6. Probar: `dotnet build PianoBooster.sln` (0 avisos nuevos), `dotnet test PianoBooster.sln`, y la app con
+   `--settings=<scratchpad>\s.json --Xquit-after=<s>` (nunca los ajustes reales del usuario), capturas con
+   `--Xscreenshot=` o con PowerShell (`CopyFromScreen`) y teclas con `WScript.Shell.SendKeys` (ver §10,
+   "Probado"). Evitar que suene música (`Midi/Output` vacío en el JSON de prueba).
+7. Al terminar: en §6 marcar la subfase como hecha, añadir aquí debajo del apartado un "Lo hecho" corto
+   (ficheros, diferencias deliberadas, sin probar) y quitar lo que ya no esté pendiente en §10
+   ("Pendiente de la fase 5").
+
+### 11.1 Biblioteca SQLite
+
+- **C++:** `Library.h` (132), `Library.cpp` (504). Usa `MidiInfo` (ya portado: `Core/MidiInfo.cs`).
+- **C#:** `src/PianoBooster.Data/Library.cs` con `Microsoft.Data.Sqlite`, implementando
+  `Core/LibraryTypes.cs` (`ISongLibrary`). Ampliar `ISongLibrary` y los tipos con lo que falte de `CLibrary`
+  (`CLibrarySong`, ubicaciones, favoritos, recientes, `songs`, `song`, `storeInfo`, `normalisePath`,
+  `fileHash`, `midiFileFilters`), con los mismos nombres.
+- **Mismo esquema** que el `library.db` del C++ (`%APPDATA%\PianoBooster\library.db`, que existe en este
+  equipo: probar leyendo **una copia**, no el original).
+- En `MainWindow` crearla en `SettingsStore.Folder` y quitar `_library = null` (comentario "phase 5").
+  Desde ese momento funcionan, ya portados: mano/velocidad/canales por canción, última canción de cada
+  carpeta, importación de `pb.cfg` y las secciones del panel lateral (añadir, actualizar, renombrar, borrar).
+- Pruebas en `tests/PianoBooster.Data.Tests` (base temporal): canciones, secciones, ajustes por canción,
+  canción movida (mismo hash), copia del `library.db` del C++.
+
+### 11.2 Diálogo de la biblioteca (necesita 5.1)
+
+- **C++:** `GuiLibraryDialog.h` (74), `GuiLibraryDialog.cpp` (394, sin `.ui`) y `QtWindow::openLibrary()`
+  (`Library/Initialised`, `CSettings::boosterMusicBooksFolder()`, ya en `Settings.BoosterMusicBooksFolder()`).
+- **C#:** `LibraryDialog.axaml(.cs)`; en `MainWindow.OpenLibrary()` sustituir `NotPortedYet`. El botón
+  "Library..." del panel ya llama a `OpenLibrary()`.
+
+### 11.3 `SectionPlayer` y piano roll
+
+- **C++:** `SectionPlayer.h/.cpp` (80 + 256; usa `MidiDevice` y `SongMap`), `GuiPianoRoll.h/.cpp`
+  (174 + 860; widget con `QPainter`, usa `Chord`, `Library.h` (solo `CSongPart`) y `SongMap`).
+- **C#:** `SectionPlayer` en `src/PianoBooster.Midi` (o la app; sin interfaz) y `PianoRoll` como control
+  de Avalonia que dibuja en `Render(DrawingContext)` (o Skia como `ScoreView`). `SongMap` ya está en el Core.
+- Se puede probar sin el editor: una ventana de prueba o una prueba que dibuje el piano roll en un bitmap.
+
+### 11.4 Editor de secciones (necesita 5.1 y 5.3)
+
+- **C++:** `GuiSectionEditor.h/.cpp` (146 + 670) y `QtWindow::openSectionEditor()`.
+- **C#:** `SectionEditor.axaml(.cs)`. `MainWindow.OpenSectionEditor()` ya hace lo de antes y después
+  (parar, `ReloadPartsAfterEditing`, volúmenes); falta crear el editor con los argumentos del C++ y, si se
+  acepta, `SelectInstrument` + `PractisePart`/`PractiseSelection` (ya en `SidePanel`).
+
+### 11.5 Diálogo MIDI
+
+- **C++:** `GuiMidiSetupDialog.h/.cpp/.ui` (68 + 336 + 410). Usa `MidiDeviceFluidSynth` (ya en
+  `src/PianoBooster.Midi`) y la lista de SoundFonts de `Settings` (`GetFluidSoundFontNames`...).
+- **C#:** `MidiSetupDialog.axaml(.cs)`; **borrar** `MidiSetupDialogProvisional.cs` y llamar al nuevo en
+  `MainWindow.OnShowMidiSetup`. Ojo a la latencia (`Midi/Latency`, `Keyboard/RightSoundPrevious`).
+
+### 11.6 Teclado
+
+- **C++:** `GuiKeyboardSetupDialog.h/.cpp/.ui` (93 + 166 + 352).
+- **C#:** `KeyboardSetupDialog.axaml(.cs)`; en `MainWindow.OnShowKeyboardSetup`.
+
+### 11.7 Preferencias
+
+- **C++:** `GuiPreferencesDialog.h/.cpp/.ui` (61 + 181 + 284). Recibe también el `CGLView` (aquí
+  `ScoreView`).
+- **C#:** `PreferencesDialog.axaml(.cs)`; en `MainWindow.OnShowPreferencesDialog` (después ya llama a
+  `RefreshTranslate()` y `Score.RefreshScroll()`). El idioma (`General/lang`) se guarda pero no se aplica
+  hasta la fase 6.
+
+### 11.8 Detalles de la canción
+
+- **C++:** `GuiSongDetailsDialog.h/.cpp/.ui` (62 + 96 + 140).
+- **C#:** `SongDetailsDialog.axaml(.cs)`; en `MainWindow.OnShowSongDetailsDialog`.
+
+`GuiHighScoreWindow.ui` no lo usa nadie en el C++: no se porta. Cuando no quede ningún `NotPortedYet`
+en `MainWindow`, borrarlo y dar la fase 5 por hecha en §6.
+

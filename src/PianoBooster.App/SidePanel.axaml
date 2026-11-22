@@ -1,0 +1,108 @@
+<!-- Ported from GuiSidePanel.ui of PianoBooster (C++), with the song header and the sections
+     that GuiSidePanel.cpp adds. Qt's group boxes are bordered panels with a title. GPLv3. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PianoBooster.App.SidePanel">
+  <UserControl.Styles>
+    <Style Selector="Border.group">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="TextBlock.groupTitle">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="Button.tool">
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="8" Margin="6">
+    <!-- the song header (GuiSidePanel.cpp) -->
+    <StackPanel Spacing="2">
+      <TextBlock x:Name="songTitleLabel" FontWeight="Bold" TextWrapping="Wrap" />
+      <TextBlock x:Name="songFolderLabel" TextTrimming="CharacterEllipsis" />
+      <TextBlock x:Name="songInfoLabel" TextWrapping="Wrap" />
+      <Button x:Name="libraryButton" Content="Library..." HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" Margin="0,4,0,0" Click="OnLibraryButtonClicked"
+              ToolTip.Tip="Choose a song from the library: favourites, recent songs and your folders" />
+      <DockPanel Margin="0,4,0,0">
+        <TextBlock x:Name="partLabel" Text="Section:" VerticalAlignment="Center" Margin="0,0,6,0" />
+        <ComboBox x:Name="partCombo" HorizontalAlignment="Stretch" SelectionChanged="OnPartComboActivated" />
+      </DockPanel>
+      <DockPanel>
+        <Button x:Name="editorButton" Classes="tool" Content="Editor..." Click="OnEditorButtonClicked" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="addPartButton" Classes="tool" Content="+" Click="OnAddPartClicked" />
+          <Button x:Name="updatePartButton" Classes="tool" Content="💾" Click="OnUpdatePartClicked" />
+          <Button x:Name="renamePartButton" Classes="tool" Content="✎" Click="OnRenamePartClicked" />
+          <Button x:Name="deletePartButton" Classes="tool" Content="🗑" Click="OnDeletePartClicked" />
+        </StackPanel>
+      </DockPanel>
+    </StackPanel>
+
+    <!-- hidden: the next/previous song and book shortcuts still use them -->
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" IsVisible="False">
+      <TextBlock x:Name="label" Text="Book:" />
+      <ComboBox x:Name="bookCombo" Grid.Column="1" />
+      <TextBlock x:Name="label_2" Grid.Row="1" Text="Song:" />
+      <ComboBox x:Name="songCombo" Grid.Row="1" Grid.Column="1" />
+    </Grid>
+    <CheckBox x:Name="repeatSong" Content="Repeat song" IsCheckedChanged="OnRepeatSongReleased" />
+
+    <Grid ColumnDefinitions="*,6,*">
+      <Border Classes="group">
+        <StackPanel>
+          <TextBlock Classes="groupTitle" Text="Skill" />
+          <RadioButton x:Name="listenRadio" GroupName="skill" Content="Listen" IsCheckedChanged="OnListenRadioToggled" />
+          <RadioButton x:Name="rhythmTapRadio" GroupName="skill" Content="Rhythm Tap" IsCheckedChanged="OnRhythmTapRadioToggled" />
+          <RadioButton x:Name="followYouRadio" GroupName="skill" Content="Follow You" IsCheckedChanged="OnFollowYouRadioToggled" />
+          <RadioButton x:Name="playAlongRadio" GroupName="skill" Content="Play Along" IsCheckedChanged="OnPlayAlongRadioToggled" />
+        </StackPanel>
+      </Border>
+      <Border Classes="group" Grid.Column="2">
+        <DockPanel>
+          <TextBlock Classes="groupTitle" Text="Hands" DockPanel.Dock="Top" />
+          <Slider x:Name="pianoSlider" DockPanel.Dock="Right" Orientation="Vertical" Minimum="-100" Maximum="100"
+                  TickFrequency="1" IsSnapToTickEnabled="True" Height="100"
+                  ToolTip.Tip="Adjust the volume of your piano" ValueChanged="OnPianoSliderValueChanged" />
+          <StackPanel>
+            <RadioButton x:Name="rightHandRadio" GroupName="hands" Content="Right" IsCheckedChanged="OnRightHandRadioToggled" />
+            <RadioButton x:Name="bothHandsRadio" GroupName="hands" Content="Both" IsCheckedChanged="OnBothHandsRadioToggled" />
+            <RadioButton x:Name="leftHandRadio" GroupName="hands" Content="Left" IsCheckedChanged="OnLeftHandRadioToggled" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <DockPanel>
+      <TextBlock x:Name="label2" Text="Rhythm Tapping with:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <ComboBox x:Name="rhythmTappingCombo" HorizontalAlignment="Stretch" SelectionChanged="OnRhythmTappingComboActivated" />
+    </DockPanel>
+
+    <Border Classes="group">
+      <DockPanel>
+        <TextBlock Classes="groupTitle" Text="Parts" DockPanel.Dock="Top" />
+        <CheckBox x:Name="muteYourPartCheck" DockPanel.Dock="Top" Content="Mute your part when playing"
+                  ToolTip.Tip="Mute the currently selected part" IsCheckedChanged="OnMuteYourPartCheckToggled" />
+        <Slider x:Name="boostSlider" DockPanel.Dock="Right" Orientation="Vertical" Minimum="-100" Maximum="100"
+                TickFrequency="1" IsSnapToTickEnabled="True" Height="180"
+                ToolTip.Tip="Adjust the volume of the selected part" ValueChanged="OnBoostSliderValueChanged" />
+        <ListBox x:Name="trackListWidget" Height="180" SelectionMode="Single"
+                 SelectionChanged="OnTrackListWidgetCurrentRowChanged">
+          <ListBox.ContextMenu>
+            <ContextMenu>
+              <MenuItem x:Name="setRightHandItem" Header="Set as Right Hand Part" Click="OnSetTrackRightHandPart" />
+              <MenuItem x:Name="setLeftHandItem" Header="Set as Left Hand Part" Click="OnSetTrackLeftHandPart" />
+              <MenuItem x:Name="clearPartsItem" Header="Reset Both Parts" Click="OnClearTrackPart" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+        </ListBox>
+      </DockPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

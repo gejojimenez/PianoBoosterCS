@@ -7,9 +7,9 @@ PianoBooster is a MIDI file player that helps you learn to play the piano: it sh
 music on a scrolling score, waits for you to play the right notes on a MIDI keyboard, and
 tells you how well you played them.
 
-> **Status: work in progress.** The musical core (MIDI files, following the pianist,
-> scoring, the model of the score) is ported and tested. There is no user interface or
-> MIDI hardware support yet, so it can't be used to practise yet. See [Roadmap](#roadmap).
+> **Status: work in progress.** The musical core, MIDI input/output with sound (FluidSynth),
+> the scrolling score and the main window (side panel, top bar, menus, settings) are ported.
+> The song library, the section editor and most dialogs are not yet. See [Roadmap](#roadmap).
 
 ## Where it comes from
 
@@ -46,9 +46,9 @@ The full plan, the decisions and the state of each phase are in [PORTING.md](POR
 | Phase | | |
 |---|---|---|
 | 1 | Musical core and reference tests | done |
-| 2 | MIDI input/output and sound (FluidSynth), real-time thread, console player | |
-| 3 | Practice window: the scrolling score drawn with Skia | |
-| 4 | Main window: side panel, top bar, settings | |
+| 2 | MIDI input/output and sound (FluidSynth), real-time thread, console player | done |
+| 3 | Practice window: the scrolling score drawn with Skia | done |
+| 4 | Main window: side panel, top bar, settings | done |
 | 5 | Song library, sections, section editor, dialogs | |
 | 6 | Translations and Windows package | |
 
@@ -58,7 +58,8 @@ Needs the [.NET SDK](https://dotnet.microsoft.com/download) (9 or later).
 
 ```
 dotnet build PianoBooster.sln
-dotnet test tests/PianoBooster.Core.Tests
+dotnet test PianoBooster.sln
+dotnet run --project src/PianoBooster.App
 ```
 
 The reference outputs of the C++ code are already in `tests/PianoBooster.Core.Tests/TestData/reference`.
@@ -69,9 +70,14 @@ To make them again (only needed if the scenarios or the dump tools change), see
 
 ```
 src/PianoBooster.Core         the musical core (no interface)
-tests/PianoBooster.Core.Tests the tests, the C# twin of RefDump and the test MIDI files
+src/PianoBooster.Midi         MIDI devices (DryWetMIDI, FluidSynth) and the conductor thread
+src/PianoBooster.Rendering    the scrolling score drawn with SkiaSharp
+src/PianoBooster.Data         the settings file (JSON); the song library comes in phase 5
+src/PianoBooster.App          the application (Avalonia)
+tests/PianoBooster.*.Tests    the tests; Core.Tests has the C# twin of RefDump and the test MIDI files
 tools/RefDump                 the original C++ core writing the reference outputs
 tools/MakeSyntheticMidi       writes the synthetic test MIDI files
+tools/PlaySong, ScoreWindow   a console player and a bare score window (measures the smoothness)
 ```
 
 ## License

@@ -157,7 +157,7 @@ public class Conductor
     protected int CheckMidiInput() => MidiDevice?.CheckMidiInput() ?? 0;
     protected MidiEvent ReadMidiInput() => MidiDevice!.ReadMidiInput();
     public bool ValidMidiOutput() => MidiDevice?.ValidMidiOutput() ?? false;
-    protected bool OpenMidiPort(MidiType type, string portName) => MidiDevice?.OpenMidiPort(type, portName) ?? false;
+    public bool OpenMidiPort(MidiType type, string portName) => MidiDevice?.OpenMidiPort(type, portName) ?? false;
 
     //////////////////////////////////////////////////////////////////////////
 

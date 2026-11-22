@@ -1,0 +1,33 @@
+<!-- Ported from GuiLoopingPopup.ui of PianoBooster (C++). GPLv3. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PianoBooster.App.LoopingPopup">
+  <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto"
+        RowSpacing="6" ColumnSpacing="6">
+    <TextBlock x:Name="startBarLabel" Grid.Row="0" Grid.Column="0" Text="Start Bar:" VerticalAlignment="Center" />
+    <NumericUpDown x:Name="startBarSpin" Grid.Row="0" Grid.Column="1" Minimum="1" Maximum="1000" Value="1"
+                   Increment="1" FormatString="0" MinWidth="100" ValueChanged="OnStartBarSpinValueChanged" />
+    <TextBlock x:Name="startBeatLabel" Grid.Row="0" Grid.Column="2" Text="Beat:" VerticalAlignment="Center" />
+    <NumericUpDown x:Name="startBeatSpin" Grid.Row="0" Grid.Column="3" Minimum="1" Maximum="32.99" Value="1"
+                   Increment="0.5" FormatString="0.00" MinWidth="100" ValueChanged="OnStartBeatSpinValueChanged"
+                   ToolTip.Tip="Beat within the start bar (1 is the first beat, 2.5 is halfway through the second beat)" />
+    <Button x:Name="startHereButton" Grid.Row="0" Grid.Column="4" Click="OnStartHereButtonClicked" Padding="4"
+            ToolTip.Tip="Set the start to the current notes">
+      <Image Source="avares://PianoBooster/images/flag.png" Width="20" Height="20" />
+    </Button>
+    <CheckBox x:Name="loopCheck" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Content="Repeat up to the end bar"
+              IsCheckedChanged="OnLoopCheckToggled" />
+    <TextBlock x:Name="endBarLabel" Grid.Row="2" Grid.Column="0" Text="End Bar:" VerticalAlignment="Center" />
+    <NumericUpDown x:Name="endBarSpin" Grid.Row="2" Grid.Column="1" Minimum="1" Maximum="1000" Value="1"
+                   Increment="1" FormatString="0" MinWidth="100" ValueChanged="OnEndBarSpinValueChanged" />
+    <TextBlock x:Name="endBeatLabel" Grid.Row="2" Grid.Column="2" Text="Beat:" VerticalAlignment="Center" />
+    <NumericUpDown x:Name="endBeatSpin" Grid.Row="2" Grid.Column="3" Minimum="1" Maximum="32.99" Value="1"
+                   Increment="0.5" FormatString="0.00" MinWidth="100" ValueChanged="OnEndBeatSpinValueChanged"
+                   ToolTip.Tip="Beat within the end bar (1 is the first beat, 2.5 is halfway through the second beat)" />
+    <Button x:Name="endHereButton" Grid.Row="2" Grid.Column="4" Click="OnEndHereButtonClicked" Padding="4"
+            ToolTip.Tip="Set the end to the current notes">
+      <Image Source="avares://PianoBooster/images/flag.png" Width="20" Height="20" />
+    </Button>
+    <TextBlock x:Name="loopingText" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="5" />
+  </Grid>
+</UserControl>

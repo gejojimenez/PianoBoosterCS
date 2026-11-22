@@ -1,0 +1,68 @@
+<!-- Ported from QtWindow of PianoBooster (C++): the menus, the side panel on the left and, on the
+     right, the top bar, the score and the tutor page. GPLv3. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:PianoBooster.App"
+        x:Class="PianoBooster.App.MainWindow"
+        Icon="avares://PianoBooster/images/pianobooster.png"
+        Width="1200" Height="800" MinWidth="640" MinHeight="400"
+        Title="Piano Booster">
+  <DockPanel>
+    <Menu x:Name="menuBar" DockPanel.Dock="Top">
+      <MenuItem x:Name="fileMenu" Header="_File">
+        <MenuItem x:Name="openAct" Header="_Open..." InputGesture="Ctrl+O" ToolTip.Tip="Open an existing file" Click="OnOpen" />
+        <MenuItem x:Name="libraryAct" Header="_Library..." InputGesture="Ctrl+B"
+                  ToolTip.Tip="Choose a song from the library: favourites, recent songs and your folders" Click="OnOpenLibrary" />
+        <Separator x:Name="separatorAct" />
+        <!-- the recent files are inserted here -->
+        <Separator x:Name="exitSeparator" />
+        <MenuItem x:Name="exitAct" Header="E_xit" InputGesture="Ctrl+Q" ToolTip.Tip="Exit the application" Click="OnExit" />
+      </MenuItem>
+      <MenuItem x:Name="viewMenu" Header="_View">
+        <MenuItem x:Name="sidePanelStateAct" Header="_Show the Side Panel" InputGesture="F12" ToggleType="CheckBox"
+                  IsChecked="True" ToolTip.Tip="Show the Left Side Panel" Click="OnToggleSidePanel" />
+        <MenuItem x:Name="fullScreenStateAct" Header="_Fullscreen" InputGesture="F11" ToggleType="CheckBox"
+                  ToolTip.Tip="Fullscreen mode" Click="OnFullScreenStateAct" />
+        <MenuItem x:Name="viewPianoKeyboard" Header="Show Piano _Keyboard" ToggleType="CheckBox"
+                  ToolTip.Tip="Show Piano Keyboard Widget" Click="OnViewPianoKeyboard" />
+      </MenuItem>
+      <MenuItem x:Name="songMenu" Header="_Song">
+        <MenuItem x:Name="songDetailsAct" Header="Song _Details ..." InputGesture="Ctrl+D" ToolTip.Tip="Song Settings"
+                  Click="OnShowSongDetailsDialog" />
+        <MenuItem x:Name="sectionEditorAct" Header="Section _Editor..." InputGesture="Ctrl+E"
+                  ToolTip.Tip="Create and change the sections of the song on a view of the whole song" Click="OnOpenSectionEditor" />
+      </MenuItem>
+      <MenuItem x:Name="setupMenu" Header="Set_up">
+        <MenuItem x:Name="setupMidiAct" Header="_MIDI Setup ..." InputGesture="Ctrl+S" ToolTip.Tip="Setup the MIDI input and output"
+                  Click="OnShowMidiSetup" />
+        <MenuItem x:Name="setupKeyboardAct" Header="Piano _Keyboard Setting ..." InputGesture="Ctrl+K"
+                  ToolTip.Tip="Change the piano keyboard settings" Click="OnShowKeyboardSetup" />
+        <MenuItem x:Name="setupPreferencesAct" Header="_Preferences ..." InputGesture="Ctrl+P" ToolTip.Tip="Settings"
+                  Click="OnShowPreferencesDialog" />
+      </MenuItem>
+      <MenuItem x:Name="helpMenu" Header="_Help">
+        <MenuItem Header="_Help" ToolTip.Tip="Piano Booster Help" Click="OnHelp" />
+        <MenuItem Header="_Website" ToolTip.Tip="Piano Booster Website" Click="OnWebsite" />
+        <MenuItem x:Name="shortcutAct" Header="_PC Shortcut Keys" ToolTip.Tip="The PC Keyboard shortcut keys" Click="OnKeyboardShortcuts" />
+        <MenuItem x:Name="aboutAct" Header="_About" ToolTip.Tip="Show the application's About box" Click="OnAbout" />
+      </MenuItem>
+    </Menu>
+
+    <!-- The side panel can be taller than small screens: then it scrolls, instead of
+         making the window taller than the screen. -->
+    <ScrollViewer x:Name="sidePanelScroll" DockPanel.Dock="Left" Width="310"
+                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <app:SidePanel x:Name="sidePanel" />
+    </ScrollViewer>
+
+    <DockPanel Margin="4,0,4,4">
+      <app:TopBar x:Name="topBar" DockPanel.Dock="Top" />
+      <!-- the tutor page (QTextBrowser), under the score -->
+      <Border x:Name="tutorWindow" DockPanel.Dock="Bottom" Height="180" IsVisible="False" Background="#FFFFC0"
+              BorderBrush="Gray" BorderThickness="1" Margin="0,4,0,0">
+        <ScrollViewer x:Name="tutorScroll" Padding="8" />
+      </Border>
+      <ContentControl x:Name="scoreHost" />
+    </DockPanel>
+  </DockPanel>
+</Window>

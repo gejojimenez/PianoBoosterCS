@@ -13,6 +13,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.Themes.Fluent;
 using PianoBooster.Core;
+using PianoBooster.App;
 using PianoBooster.Midi;
 
 namespace PianoBooster.ScoreWindow;

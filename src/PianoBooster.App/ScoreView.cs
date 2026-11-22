@@ -1,6 +1,7 @@
 // The practice view of PianoBooster in Avalonia: the frame pacing of CGLView (one frame for
 // each refresh of the screen, PianoBooster 1.3.8) with the drawing of PianoBooster.Rendering.
-// Part of the .NET port of PianoBooster. GPLv3.
+// Part of the .NET port of PianoBooster. GPLv3. It was in tools/ScoreWindow in phase 3; that
+// tool still uses it (it links this file).
 //
 // Each frame (TopLevel.RequestAnimationFrame, in the thread of the interface):
 //   1. the event bits of the conductor (CGLView's m_eventBits),
@@ -22,7 +23,7 @@ using PianoBooster.Midi;
 using PianoBooster.Rendering;
 using SkiaSharp;
 
-namespace PianoBooster.ScoreWindow;
+namespace PianoBooster.App;
 
 /// <summary>Times (ms) of something that happens many times, for the measurements.</summary>
 public sealed class TimeStats
@@ -72,6 +73,7 @@ public sealed class ScoreView : Control
     private FrameSnapshot? _frame;
     private int _width = -1, _height = -1;
     private bool _attached;
+    private bool _allowedTimerEvent = true;
     private long _measureStart;
 
     public ScoreView(Song song, Score score, IPianoSettings settings, ConductorThread conductor)
@@ -81,6 +83,35 @@ public sealed class ScoreView : Control
         _settings = settings;
         _conductor = conductor;
         ClipToBounds = true;
+        Focusable = true; // Qt::ClickFocus
+    }
+
+    /// <summary>The warning shown on the score (CSettings::getWarningMessage()), read every frame.</summary>
+    public Func<string>? WarningMessageSource { get; set; }
+
+    /// <summary>CGLView::stopTimerEvent(): the song and the drawing stop (while a dialog is open).
+    /// The conductor thread stops; when it starts again the time counts from then, so the time
+    /// the dialog was open is not given to the song at once (the C++ gives it).</summary>
+    public void StopTimerEvent()
+    {
+        _allowedTimerEvent = false;
+        _conductor.Stop();
+    }
+
+    /// <summary>CGLView::startTimerEvent().</summary>
+    public void StartTimerEvent()
+    {
+        if (_allowedTimerEvent)
+            return;
+        _allowedTimerEvent = true;
+        _conductor.Start();
+        RequestFrame();
+    }
+
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        Focus();
     }
 
     /// <summary>The frames as they are prepared, with the time of the refresh (RequestAnimationFrame).</summary>
@@ -127,8 +158,8 @@ public sealed class ScoreView : Control
 
     private void OnFrame(TimeSpan time)
     {
-        if (!_attached)
-            return;
+        if (!_attached || !_allowedTimerEvent)
+            return; // StartTimerEvent() asks for the frames again
 
         // CGLView::timerEvent(): the event bits
         uint eventBits = _conductor.TakeEventBits();
@@ -147,6 +178,8 @@ public sealed class ScoreView : Control
                 _height = height;
                 _renderer.Resize(Math.Max(width, 1), Math.Max(height, 1));
             }
+            if (WarningMessageSource != null)
+                _renderer.WarningMessage = WarningMessageSource();
             _renderer.PrepareFrame(_song, _score, _settings, _conductor.UpdateMidiTask, frame);
         }
         PrepareTimes.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);

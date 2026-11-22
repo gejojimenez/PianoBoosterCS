@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The main window of PianoBooster in Avalonia (phase 4 of the port): QtWindow, GuiSidePanel,
+       GuiTopBar, GuiLoopingPopup, CSettings and the practice view (CGLView, drawn by
+       PianoBooster.Rendering). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>PianoBooster.App</RootNamespace>
+    <AssemblyName>PianoBooster</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>images\pianobooster.ico</ApplicationIcon>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PianoBooster.Core\PianoBooster.Core.csproj" />
+    <ProjectReference Include="..\PianoBooster.Midi\PianoBooster.Midi.csproj" />
+    <ProjectReference Include="..\PianoBooster.Rendering\PianoBooster.Rendering.csproj" />
+    <ProjectReference Include="..\PianoBooster.Data\PianoBooster.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The images of src/images of the C++ code -->
+    <AvaloniaResource Include="images\*.png" />
+  </ItemGroup>
+
+</Project>

@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The version that Avalonia 11.3 uses -->
-    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <!-- The version that Avalonia 12.1 uses -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
   </ItemGroup>
 
   <ItemGroup>
