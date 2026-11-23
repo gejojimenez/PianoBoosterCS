@@ -115,7 +115,7 @@
           <Button x:Name="playButton" HorizontalAlignment="Stretch" Click="OnPlayButtonClicked"
                   ToolTip.Tip="Listen to the selection, or to the song from the place shown if nothing is selected (Space)">
             <StackPanel Orientation="Horizontal" Spacing="6">
-              <Image x:Name="playButtonImage" Source="avares://PianoBooster/images/play.png" Width="16" Height="16" />
+              <Image x:Name="playButtonImage" Source="avares://PianoBoosterCS/images/play.png" Width="16" Height="16" />
               <TextBlock x:Name="playButtonText" Text="Play" VerticalAlignment="Center" />
             </StackPanel>
           </Button>

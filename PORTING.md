@@ -386,7 +386,9 @@ dotnet run --project src\PianoBooster.App -- <fichero.mid>
 dotnet run --project src\PianoBooster.App -- --settings=<carpeta>\pruebas.json --Xquit-after=8 --Xscreenshot=<carpeta>\v.png <fichero.mid>
 ```
 
-El ejecutable se llama `PianoBooster.exe`. Acepta las mismas opciones que el C++ (`-d`, `--log`,
+El ejecutable se llama `PianoBoosterCS.exe` (antes `PianoBooster.exe`; el nombre del programa es PianoBoosterCS
+para distinguirlo del C++, y así se ve en el título de la ventana y en el zip `PianoBoosterCS-<versión>-win64.zip`;
+la carpeta de ajustes y de la biblioteca sigue siendo `%APPDATA%\PianoBooster`). Acepta las mismas opciones que el C++ (`-d`, `--log`,
 `--Xtick-rate=`, `--lights`, `-X1`...) y tres nuevas para probar sin tocar los ajustes del usuario:
 `--settings=<fichero.json>` (otro fichero de ajustes), `--Xquit-after=<s>` (se cierra sola) y
 `--Xscreenshot=<fichero.png>` (guarda una imagen de la ventana antes de cerrarse).

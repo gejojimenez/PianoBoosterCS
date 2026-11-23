@@ -6,11 +6,11 @@
   <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
     <Button x:Name="playFromStartButton" ToolTip.Tip="Start playing music from the start"
                   Padding="6,2" Click="OnPlayFromStartButtonClicked">
-      <Image Source="avares://PianoBooster/images/play-from-start.png" Width="20" Height="20" />
+      <Image Source="avares://PianoBoosterCS/images/play-from-start.png" Width="20" Height="20" />
     </Button>
     <ToggleButton x:Name="playButton" ToolTip.Tip="Start and stop playing music"
                   Padding="6,2" Click="OnPlayButtonClicked">
-      <Image x:Name="playButtonImage" Source="avares://PianoBooster/images/play.png" Width="20" Height="20" />
+      <Image x:Name="playButtonImage" Source="avares://PianoBoosterCS/images/play.png" Width="20" Height="20" />
     </ToggleButton>
     <TextBlock x:Name="label_2" Text="Speed:" VerticalAlignment="Center" Margin="6,0,0,0" />
     <NumericUpDown x:Name="speedSpin" Minimum="20" Maximum="200" Increment="2" Value="100"

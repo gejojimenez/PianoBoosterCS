@@ -6,7 +6,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>PianoBooster.App</RootNamespace>
-    <AssemblyName>PianoBooster</AssemblyName>
+    <AssemblyName>PianoBoosterCS</AssemblyName> <!-- PianoBoosterCS.exe, to tell it from PianoBooster (C++) -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>images\pianobooster.ico</ApplicationIcon>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
@@ -34,7 +34,7 @@
     <None Include="translations\langs.json" CopyToOutputDirectory="PreserveNewest" />
     <!-- translations/Strings.<culture>.resx (made from translations/*.ts of the C++ code by
          tools/ts-to-resx.ps1) are embedded by default: one satellite assembly per language,
-         <culture>/PianoBooster.resources.dll, read by Strings -->
+         <culture>/PianoBoosterCS.resources.dll, read by Strings -->
     <!-- music/BoosterMusicBooks.zip of the C++ code, installed next to the program (as on Windows in C++) -->
     <None Include="..\..\music\BoosterMusicBooks.zip" Link="BoosterMusicBooks.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

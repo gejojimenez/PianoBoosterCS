@@ -191,7 +191,7 @@ public partial class SectionEditor : Window
     }
 
     private static Bitmap LoadIcon(string name) =>
-        new(AssetLoader.Open(new Uri("avares://PianoBooster/images/" + name)));
+        new(AssetLoader.Open(new Uri("avares://PianoBoosterCS/images/" + name)));
 
     public bool IsValid => _map.IsValid;
 

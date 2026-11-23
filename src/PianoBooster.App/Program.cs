@@ -25,11 +25,15 @@ internal static class Program
 {
     public const string Version = "1.3.11"; // PB_VERSION
 
+    /// <summary>The name of the program: PianoBoosterCS, to tell it from PianoBooster (C++). It is the
+    /// name of the executable (AssemblyName) and is shown in the title of the main window.</summary>
+    public const string Name = "PianoBoosterCS";
+
     public static CommandLine CommandLine { get; } = new();
 
     private static void DisplayUsage()
     {
-        Console.WriteLine("Usage: pianobooster [flags] [midifile]");
+        Console.WriteLine("Usage: " + Name + " [flags] [midifile]");
         Console.WriteLine("  -d, --debug             Increase the debug level.");
         Console.WriteLine("      --Xnote-length      Displays the note length (experimental)");
         Console.WriteLine("  -h, --help              Displays this help message.");
@@ -114,7 +118,7 @@ internal static class Program
                 }
                 else if (arg.StartsWith("-v", StringComparison.Ordinal) || arg.StartsWith("--version", StringComparison.Ordinal))
                 {
-                    Console.WriteLine("pianobooster Version " + Version);
+                    Console.WriteLine(Name + " Version " + Version);
                     Environment.Exit(0);
                 }
                 else

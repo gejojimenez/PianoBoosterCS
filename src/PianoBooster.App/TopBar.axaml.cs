@@ -54,7 +54,7 @@ public partial class TopBar : UserControl
     }
 
     private static Bitmap LoadIcon(string name) =>
-        new(AssetLoader.Open(new Uri("avares://PianoBooster/images/" + name)));
+        new(AssetLoader.Open(new Uri("avares://PianoBoosterCS/images/" + name)));
 
     public void Init(Song songObj, object songLock)
     {

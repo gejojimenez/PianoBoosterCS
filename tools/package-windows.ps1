@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Packages PianoBooster (the .NET port) for Windows into a portable zip: what tools/package-windows.sh
+    Packages PianoBoosterCS (the .NET port of PianoBooster) for Windows into a portable zip: what tools/package-windows.sh
     does for the C++ code (built with MSYS2), with a self-contained "dotnet publish".
 
 .DESCRIPTION
@@ -8,13 +8,13 @@
        with it), into a folder (not a single file: the DLLs of FluidSynth are loaded from next to the
        program). It brings what the projects copy next to the program, as the C++ package does:
        BoosterMusicBooks.zip, fonts/DejaVuSans.ttf, translations/langs.json and the translations
-       (<culture>/PianoBooster.resources.dll, made by tools/ts-to-resx.ps1).
+       (<culture>/PianoBoosterCS.resources.dll, made by tools/ts-to-resx.ps1).
     2. README.md, LICENSE (GPLv3) and NOTICE.
     3. FluidSynth: libfluidsynth-3.dll and, repeating "objdump -p" until no new one appears, every DLL it
        needs that is in the same MSYS2 folder (as the ldd loop of package-windows.sh).
     4. The SoundFont FluidR3_GM.sf2 in soundfont/, where the program looks for one the first time
        (CSettings::setupDefaultSoundFont()). The C++ package has none.
-    5. The zip PianoBooster-<version>-win64.zip (version of Directory.Build.props), with Compress-Archive.
+    5. The zip PianoBoosterCS-<version>-win64.zip (version of Directory.Build.props), with Compress-Archive.
 
     Part of the .NET port of PianoBooster. GPLv3.
 
@@ -68,7 +68,7 @@ function Get-SoundFontInfo([string]$path) {
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 [xml]$props = Get-Content (Join-Path $root 'Directory.Build.props') -Raw
 $version = @($props.Project.PropertyGroup | ForEach-Object { $_.SelectSingleNode('Version') } | Where-Object { $_ })[0].InnerText
-$name = "PianoBooster-$version-win64"
+$name = "PianoBoosterCS-$version-win64"
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory $OutDir | Out-Null }
 $OutDir = (Resolve-Path $OutDir).Path
 $packageDir = Join-Path $OutDir $name
@@ -103,7 +103,7 @@ if (Test-Path $zip) { Remove-Item -Force $zip }
     -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false `
     -o $packageDir --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)" }
-foreach ($needed in @('PianoBooster.exe', 'BoosterMusicBooks.zip', 'fonts\DejaVuSans.ttf', 'translations\langs.json', 'es\PianoBooster.resources.dll')) {
+foreach ($needed in @('PianoBoosterCS.exe', 'BoosterMusicBooks.zip', 'fonts\DejaVuSans.ttf', 'translations\langs.json', 'es\PianoBoosterCS.resources.dll')) {
     if (-not (Test-Path (Join-Path $packageDir $needed))) { throw "$needed is missing from the published folder" }
 }
 # The NuGet packages of Skia and HarfBuzz bring the symbols of their native DLLs (about 100 MB), and
@@ -143,7 +143,7 @@ if (-not $NoSoundFont) {
     $info = Get-SoundFontInfo $SoundFont
     $readme = @(
         "$(Split-Path $SoundFont -Leaf): the General MIDI SoundFont used by the FluidSynth sound generator of",
-        "PianoBooster when no other has been chosen (Setup/MIDI Setup, FluidSynth tab).",
+        "PianoBoosterCS when no other has been chosen (Setup/MIDI Setup, FluidSynth tab).",
         "",
         "From the INFO chunk of the file:")
     foreach ($key in 'INAM', 'IENG', 'ICOP', 'ICRD', 'ICMT') {

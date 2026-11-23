@@ -13,7 +13,7 @@
                    ToolTip.Tip="Beat within the start bar (1 is the first beat, 2.5 is halfway through the second beat)" />
     <Button x:Name="startHereButton" Grid.Row="0" Grid.Column="4" Click="OnStartHereButtonClicked" Padding="4"
             ToolTip.Tip="Set the start to the current notes">
-      <Image Source="avares://PianoBooster/images/flag.png" Width="20" Height="20" />
+      <Image Source="avares://PianoBoosterCS/images/flag.png" Width="20" Height="20" />
     </Button>
     <CheckBox x:Name="loopCheck" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Content="Repeat up to the end bar"
               IsCheckedChanged="OnLoopCheckToggled" />
@@ -26,7 +26,7 @@
                    ToolTip.Tip="Beat within the end bar (1 is the first beat, 2.5 is halfway through the second beat)" />
     <Button x:Name="endHereButton" Grid.Row="2" Grid.Column="4" Click="OnEndHereButtonClicked" Padding="4"
             ToolTip.Tip="Set the end to the current notes">
-      <Image Source="avares://PianoBooster/images/flag.png" Width="20" Height="20" />
+      <Image Source="avares://PianoBoosterCS/images/flag.png" Width="20" Height="20" />
     </Button>
     <TextBlock x:Name="loopingText" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="5" />
   </Grid>

@@ -65,7 +65,7 @@ public partial class MainWindow : Window
         // in the folder of the settings, where the C++ keeps its library.db (the same file is shared)
         _library = store.Folder is string folder ? new Library(folder) : null;
         _settings.SetLibrary(_library);
-        Title = "Piano Booster " + Program.Version; // the name is not translated
+        Title = Program.Name + " " + Program.Version; // the name is not translated
 
         // Cfg::setDefaults() and decodeCommandLine(): see Program
         if (commandLine.MidiFile != null)
@@ -804,7 +804,7 @@ public partial class MainWindow : Window
             title = _song.SongTitle;
         sidePanel.SetSongInfo(title, fileName, info);
         sidePanel.LoadParts(); // the song starts from the beginning, with no part selected
-        Title = "Piano Booster " + Program.Version + " - " + title;
+        Title = Program.Name + " " + Program.Version + " - " + title;
     }
 
     // ---- the size and position of the window

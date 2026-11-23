@@ -108,7 +108,7 @@ public partial class PreferencesDialog : Window
             languageCombo.SelectedIndex = languageCombo.Items.Count - 1;
 
         // the pianobooster_<code>.qm files in the C++ code; here the satellite assemblies of the
-        // translations (<culture>/PianoBooster.resources.dll), sorted by name
+        // translations (<culture>/PianoBoosterCS.resources.dll), sorted by name
         foreach (string langCode in Strings.InstalledLanguages())
         {
             AddLanguage(LanguageName(rootLangs, langCode), langCode);
