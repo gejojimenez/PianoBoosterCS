@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml;
 using PianoBooster.Core;
 using PianoBooster.Data;
@@ -87,6 +88,33 @@ public sealed class Settings : IPianoSettings
     // IPianoSettings
     public string GetString(string key, string defaultValue = "") => _store.GetString(key, defaultValue);
     public int GetInt(string key, int defaultValue = 0) => _store.GetInt(key, defaultValue);
+
+    /// <summary>The name of the keyboard of an input port, without the index that the port list
+    /// adds ("2 - Piano USB" is "Piano USB"): the index changes when other devices are plugged in.</summary>
+    public static string KeyboardName(string inputPort) =>
+        Regex.Replace(inputPort, @"^\d+ - ", "");
+
+    // Each MIDI keyboard keeps its range in the library. A keyboard seen for the first time gets the
+    // range of Keyboard/LowestNote-HighestNote (the only one of the C++ code), which is stored for it.
+    public (int Lowest, int Highest) GetKeyboardRange(string inputPort)
+    {
+        (int Lowest, int Highest) range = (Value("Keyboard/LowestNote", 0), Value("Keyboard/HighestNote", 127));
+        if (_library is not { IsOpen: true })
+            return range;
+        string name = KeyboardName(inputPort);
+        if (_library.KeyboardRange(name) is { } stored)
+            return stored;
+        _library.SetKeyboardRange(name, range.Lowest, range.Highest);
+        return range;
+    }
+
+    public void SetKeyboardRange(string inputPort, int lowest, int highest)
+    {
+        SetValue("Keyboard/LowestNote", lowest); // also for the C++ program and without a library
+        SetValue("Keyboard/HighestNote", highest);
+        if (_library is { IsOpen: true })
+            _library.SetKeyboardRange(KeyboardName(inputPort), lowest, highest);
+    }
 
     private void SetDefaultValue(string key, string value)
     {

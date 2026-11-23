@@ -85,6 +85,11 @@ public interface ISongLibrary
     string LastSong(string folder);
     void SetLastSong(string folder, string songName);
 
+    /// <summary>The note range of a MIDI keyboard, by its name (without the index of the port), or
+    /// null if it has none yet. Not in the C++ code.</summary>
+    (int Lowest, int Highest)? KeyboardRange(string keyboard);
+    void SetKeyboardRange(string keyboard, int lowest, int highest);
+
     /// <summary>Groups many changes in one transaction, which is much faster.</summary>
     void BeginBatch();
     void EndBatch();

@@ -493,6 +493,18 @@
   <data name="Oops, you have &lt;b&gt;0 notes&lt;/b&gt; on your keyboard!" xml:space="preserve">
     <value>Vaya, tiene&lt;b&gt;0 notas&lt;/b&gt; en su teclado!</value>
   </data>
+  <data name="Detect" xml:space="preserve">
+    <value>Detectar</value>
+  </data>
+  <data name="Press the lowest and the highest keys of your MIDI keyboard" xml:space="preserve">
+    <value>Pulsa la tecla más grave y la más aguda de tu teclado MIDI</value>
+  </data>
+  <data name="Press the lowest and the highest keys of your keyboard, then press Stop." xml:space="preserve">
+    <value>Pulsa la tecla más grave y la más aguda de tu teclado, y luego pulsa Detener.</value>
+  </data>
+  <data name="PC keyboard" xml:space="preserve">
+    <value>Teclado del PC</value>
+  </data>
   <data name="Start and Repeat" xml:space="preserve">
     <value>Inicio y repetición</value>
   </data>

@@ -11,6 +11,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using PianoBooster.Core;
 
 namespace PianoBooster.App;
@@ -23,6 +24,9 @@ public partial class KeyboardSetupDialog : Window
     private int _updating;                           // QSignalBlocker: changes made by the code are not "activated"
     private bool _done;                              // accept() or reject() already called
     private readonly HashSet<char> _keysDown = new(); // isAutoRepeat(): the keys that are down
+    private string _midiInputName = "";              // the MIDI keyboard open, empty for the PC keyboard
+    private bool _detecting;                         // finding the range from the keys pressed
+    private int _detectedLowest, _detectedHighest;   // the notes pressed while detecting (-1: none yet)
 
     public KeyboardSetupDialog()
     {
@@ -73,6 +77,7 @@ public partial class KeyboardSetupDialog : Window
         // QDialog::closeEvent(): the X of the window is reject()
         Closing += (_, _) =>
         {
+            StopDetecting();
             if (!_done)
                 RejectSounds();
         };
@@ -106,19 +111,27 @@ public partial class KeyboardSetupDialog : Window
             rightSoundCombo.SelectedIndex = program;
             program = _settings.Value("Keyboard/WrongSound", Cfg.DefaultWrongPatch);
             wrongSoundCombo.SelectedIndex = program;
-            int lowestNote = _settings.Value("Keyboard/LowestNote", 0);
-            int highestNote = _settings.Value("Keyboard/HighestNote", 127);
-
+            int lowestNote, highestNote;
             bool midiKeyboard;
             lock (_sync)
+            {
                 midiKeyboard = _song.MidiInputOpen;
-            if (!midiKeyboard) // the PC keyboard: none chosen, or the chosen one is not connected
+                _midiInputName = _song.MidiInputName;
+            }
+            if (midiKeyboard) // each MIDI keyboard has its own range
+            {
+                (lowestNote, highestNote) = _settings.GetKeyboardRange(_midiInputName);
+                keyboardNameLabel.Text = Settings.KeyboardName(_midiInputName);
+            }
+            else // the PC keyboard: none chosen, or the chosen one is not connected
             {
                 lowestNote = Song.PcKeyLowestNote;
                 highestNote = Song.PcKeyHighestNote;
                 lowestNoteEdit.IsEnabled = false;
                 highestNoteEdit.IsEnabled = false;
                 resetButton.IsEnabled = false;
+                detectButton.IsEnabled = false;
+                keyboardNameLabel.Text = Strings.Tr("PC keyboard");
             }
 
             lowestNoteEdit.Text = lowestNote.ToString();
@@ -171,9 +184,56 @@ public partial class KeyboardSetupDialog : Window
 
     private void OnResetButtonClicked(object? sender, RoutedEventArgs e)
     {
+        StopDetecting();
         lowestNoteEdit.Text = "0";
         highestNoteEdit.Text = "127";
         UpdateInfoText();
+    }
+
+    // ---- finding the range from the keys pressed (not in the C++ code) ----
+
+    private void OnDetectButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_detecting)
+        {
+            StopDetecting();
+            UpdateInfoText();
+            return;
+        }
+        _detecting = true;
+        _detectedLowest = -1;
+        _detectedHighest = -1;
+        detectButton.Content = Strings.Tr("Stop");
+        lowestNoteEdit.IsEnabled = false;
+        highestNoteEdit.IsEnabled = false;
+        lock (_sync)
+            _song.MidiKeyboardNoteObserver = note => Dispatcher.UIThread.Post(() => OnDetectedNote(note));
+        UpdateInfoText();
+    }
+
+    private void OnDetectedNote(int note)
+    {
+        if (!_detecting)
+            return;
+        if (_detectedLowest < 0 || note < _detectedLowest)
+            _detectedLowest = note;
+        if (note > _detectedHighest)
+            _detectedHighest = note;
+        lowestNoteEdit.Text = _detectedLowest.ToString();
+        highestNoteEdit.Text = _detectedHighest.ToString();
+        UpdateInfoText();
+    }
+
+    private void StopDetecting()
+    {
+        if (!_detecting)
+            return;
+        _detecting = false;
+        lock (_sync)
+            _song.MidiKeyboardNoteObserver = null;
+        detectButton.Content = Strings.Tr("Detect");
+        lowestNoteEdit.IsEnabled = true;
+        highestNoteEdit.IsEnabled = true;
     }
 
     private void OnRightSoundComboActivated(object? sender, SelectionChangedEventArgs e)
@@ -235,8 +295,10 @@ public partial class KeyboardSetupDialog : Window
         int noteRange = highestNote - lowestNote;
         AppendInfo(Black, Strings.Tr("Choose the right and wrong sound for your playing."));
         IBrush color = Black;
-        if (!lowestNoteEdit.IsEnabled)
+        if (_midiInputName.Length == 0)
             str = Strings.Tr("You can use the PC keyboard instead of a MIDI keyboard; 'x' is middle C.");
+        else if (_detecting && _detectedLowest < 0)
+            str = Strings.Tr("Press the lowest and the highest keys of your keyboard, then press Stop.");
         else if (noteRange > 0)
             str = Strings.Tr("Your keyboard range is <b>octaves %1</b> and <b>semitones %2</b>; 60 is middle C.",
                              noteRange / Core.Midi.Octave, noteRange % Core.Midi.Octave);
@@ -296,6 +358,7 @@ public partial class KeyboardSetupDialog : Window
 
     private void Accept()
     {
+        StopDetecting();
         _settings.SetValue("Keyboard/RightSound", rightSoundCombo.SelectedIndex);
         _settings.SetValue("Keyboard/WrongSound", wrongSoundCombo.SelectedIndex);
         _settings.SetValue("Keyboard/RightSoundPrevious", rightSoundCombo.SelectedIndex);
@@ -303,11 +366,8 @@ public partial class KeyboardSetupDialog : Window
         int highestNote = ToInt(highestNoteEdit);
         lowestNote = Math.Clamp(lowestNote, 0, 127);
         highestNote = Math.Clamp(highestNote, 0, 127);
-        if (lowestNoteEdit.IsEnabled)
-        {
-            _settings.SetValue("Keyboard/LowestNote", lowestNote);
-            _settings.SetValue("Keyboard/HighestNote", highestNote);
-        }
+        if (_midiInputName.Length > 0) // the range of this MIDI keyboard (in the library)
+            _settings.SetKeyboardRange(_midiInputName, lowestNote, highestNote);
         lock (_sync)
         {
             _song.UpdatePianoRange(); // the range of the input in use (the PC keys when no MIDI keyboard is open)

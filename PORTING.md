@@ -501,6 +501,17 @@ de la interfaz con `Dispatcher.UIThread.Post`.
   arrancar lo hacía antes de cargar la traducción: en otro idioma que el inglés, con "Ninguno (Teclado
   PC)", arrancaba con 0–127 y pasaba a 58–75 al aceptar la configuración MIDI. El diálogo del teclado
   también decide por `MidiInputOpen`, y tras los dos diálogos se rehace la partitura.
+- **Nuevo (no está en el C++): rango por teclado MIDI y detección.** Cada teclado guarda su rango en la
+  tabla `keyboards` (`name`, `lowest_note`, `highest_note`) de `library.db`, por su nombre sin el índice del
+  puerto (`Settings.KeyboardName`: "2 - Piano USB" es "Piano USB", porque el índice cambia al enchufar otros
+  dispositivos). Solo se añade una tabla, así que `user_version` sigue en 3 y el C++ usa el mismo fichero.
+  Al abrir la entrada, `IPianoSettings.GetKeyboardRange(puerto)` da el rango de ese teclado; uno nuevo
+  recibe `Keyboard/LowestNote`–`HighestNote` (el único rango del C++), que se guarda para él. Al aceptar el
+  diálogo del teclado se guarda en su fila (y en esas claves, para el C++ y sin biblioteca). El diálogo
+  muestra el nombre del teclado y tiene un botón **Detectar**: mientras está activo,
+  `Conductor.MidiKeyboardNoteObserver` recibe cada nota pulsada (sin transponer) y la más grave y la más
+  aguda pasan a ser el rango; **Detener**, Aceptar o cerrar terminan la detección. Las traducciones de los
+  textos nuevos solo están en `pianobooster_es.ts`.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 

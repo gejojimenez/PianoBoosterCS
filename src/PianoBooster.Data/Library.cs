@@ -76,6 +76,10 @@ public sealed class Library : ISongLibrary, IDisposable
                  AddColumn("songs", "left_channel", "INTEGER") &&
                  AddColumn("songs", "right_channel", "INTEGER") &&
                  Exec("CREATE TABLE IF NOT EXISTS folders (path TEXT PRIMARY KEY, last_song TEXT)") &&
+                 // not in the C++ code: the note range of each MIDI keyboard. A new table only, so the
+                 // version stays 3 and the C++ program keeps using the same file.
+                 Exec("CREATE TABLE IF NOT EXISTS keyboards (name TEXT PRIMARY KEY, " +
+                      "lowest_note INTEGER NOT NULL, highest_note INTEGER NOT NULL)") &&
                  Exec("PRAGMA foreign_keys = ON") &&
                  Exec("PRAGMA user_version = 3");
     }
@@ -615,4 +619,27 @@ public sealed class Library : ISongLibrary, IDisposable
 
     public void SetLastSong(string folder, string songName) =>
         Run(true, "INSERT OR REPLACE INTO folders (path, last_song) VALUES (?, ?)", NormalisePath(folder), songName);
+
+    // ---- the note range of each MIDI keyboard (not in the C++ code) ----
+
+    public (int Lowest, int Highest)? KeyboardRange(string keyboard)
+    {
+        if (_db == null)
+            return null;
+        try
+        {
+            using SqliteCommand command = Command("SELECT lowest_note, highest_note FROM keyboards WHERE name = ?", keyboard);
+            using SqliteDataReader reader = command.ExecuteReader();
+            if (reader.Read())
+                return (reader.GetInt32(0), reader.GetInt32(1));
+        }
+        catch (SqliteException)
+        {
+        }
+        return null;
+    }
+
+    public void SetKeyboardRange(string keyboard, int lowest, int highest) =>
+        Run(true, "INSERT OR REPLACE INTO keyboards (name, lowest_note, highest_note) VALUES (?, ?, ?)",
+            keyboard, lowest, highest);
 }

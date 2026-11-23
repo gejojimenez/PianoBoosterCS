@@ -239,6 +239,25 @@ public sealed class LibraryTests : IDisposable
     }
 
     [Fact]
+    public void KeepsTheRangeOfEachKeyboard()
+    {
+        using (var library = new Library(_folder))
+        {
+            Assert.Null(library.KeyboardRange("Piano USB"));
+            library.SetKeyboardRange("Piano USB", 21, 108);
+            library.SetKeyboardRange("Mini keys", 48, 72);
+            library.SetKeyboardRange("Mini keys", 41, 72); // changed: replaces it
+        }
+        using (var library = new Library(_folder))
+        {
+            Assert.Equal((21, 108), library.KeyboardRange("Piano USB"));
+            Assert.Equal((41, 72), library.KeyboardRange("Mini keys"));
+            Assert.Null(library.KeyboardRange("Other"));
+        }
+        Assert.Equal(3, UserVersion(Path.Combine(_folder, "library.db"))); // a new table only: the C++ program still reads it
+    }
+
+    [Fact]
     public void GroupsChangesInABatchAndKeepsThemAfterClosing()
     {
         string a = Song("a.mid", "song a");

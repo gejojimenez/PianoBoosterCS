@@ -21,6 +21,11 @@ public interface IPianoSettings
     void UpdateWarningMessages();
     /// <summary>Sets the channels of the hands (CSettings also keeps them for the song).</summary>
     void SetChannelHands(int left, int right);
+
+    /// <summary>The note range of the MIDI keyboard of an input port (each keyboard keeps its own;
+    /// a new one starts with Keyboard/LowestNote-HighestNote). Not in the C++ code.</summary>
+    (int Lowest, int Highest) GetKeyboardRange(string inputPort);
+    void SetKeyboardRange(string inputPort, int lowest, int highest);
 }
 
 /// <summary>Settings kept in memory, for the tests and for programs without an interface.</summary>
@@ -43,6 +48,16 @@ public sealed class MemorySettings : IPianoSettings
     public void SetAdvancedMode(bool value) => AdvancedMode = value;
     public void UpdateWarningMessages() { }
     public void SetChannelHands(int left, int right) => Note.SetChannelHands(left, right);
+
+    // one range for all the keyboards
+    public (int Lowest, int Highest) GetKeyboardRange(string inputPort) =>
+        (GetInt("Keyboard/LowestNote", 0), GetInt("Keyboard/HighestNote", 127));
+
+    public void SetKeyboardRange(string inputPort, int lowest, int highest)
+    {
+        SetValue("Keyboard/LowestNote", lowest.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        SetValue("Keyboard/HighestNote", highest.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
 }
 
 public enum MidiType

@@ -3,7 +3,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="PianoBooster.App.KeyboardSetupDialog"
-        Title="Piano Keyboard Settings" Width="501" MaxWidth="501" Height="348" MinWidth="420" MinHeight="300"
+        Title="Piano Keyboard Settings" Width="501" MaxWidth="501" Height="384" MinWidth="420" MinHeight="300"
         ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
   <Window.Styles>
     <Style Selector="Border.group">
@@ -93,6 +93,13 @@
               <Button x:Name="resetButton" Grid.Column="6" Content="Reset" MinWidth="80"
                       HorizontalContentAlignment="Center" Click="OnResetButtonClicked" />
             </Grid>
+            <!-- not in the C++ code: the keyboard whose range this is, and finding it by pressing its keys -->
+            <DockPanel Margin="0,6,0,0">
+              <Button x:Name="detectButton" DockPanel.Dock="Right" Content="Detect" MinWidth="80"
+                      HorizontalContentAlignment="Center" Click="OnDetectButtonClicked"
+                      ToolTip.Tip="Press the lowest and the highest keys of your MIDI keyboard" />
+              <TextBlock x:Name="keyboardNameLabel" Classes="label" TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+            </DockPanel>
           </StackPanel>
         </Border>
       </StackPanel>
