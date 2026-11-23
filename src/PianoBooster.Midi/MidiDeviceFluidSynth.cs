@@ -15,7 +15,7 @@ using Midi = PianoBooster.Core.Midi; // the class of constants, not this namespa
 
 /// <summary>The internal synthesizer, FluidSynth (the C++ CMidiDeviceFluidSynth). It only has an
 /// output, and it is offered only when a SoundFont is set in "FluidSynth/SoundFont".</summary>
-public sealed class MidiDeviceFluidSynth : MidiDeviceBase
+public sealed partial class MidiDeviceFluidSynth : MidiDeviceBase
 {
     public const int FluidDefaultGain = 80;
     private const string FluidName = "(FluidSynth)";
@@ -33,6 +33,7 @@ public sealed class MidiDeviceFluidSynth : MidiDeviceBase
     private IntPtr _audioDriver;
     private int _soundFontId;
     private bool _validConnection;
+    private bool _timerPeriodRaised; // timeBeginPeriod(1) in effect (Windows)
 
     public override void Init()
     {
@@ -101,6 +102,13 @@ public sealed class MidiDeviceFluidSynth : MidiDeviceBase
             fluid_synth_set_chorus_on(_synth, 0);
         }
 
+        // FluidSynth's DirectSound thread refills its ring buffer after a 1 ms timed wait. With the
+        // default Windows timer resolution (15.6 ms) that wait lasts far longer and the small default
+        // buffers (128 x 4) run dry. The C++ version gets a 1 ms resolution as a side effect of Qt's
+        // precise timers (timeSetEvent); here it is asked for explicitly while the synth is open.
+        if (OperatingSystem.IsWindows() && !_timerPeriodRaised)
+            _timerPeriodRaised = timeBeginPeriod(1) == 0; // TIMERR_NOERROR
+
         // Create the audio driver.
         _audioDriver = new_fluid_audio_driver(_fluidSettings, _synth);
         if (_audioDriver == IntPtr.Zero)
@@ -166,7 +174,19 @@ public sealed class MidiDeviceFluidSynth : MidiDeviceBase
         _synth = IntPtr.Zero;
         _fluidSettings = IntPtr.Zero;
         _rawDataIndex = 0;
+
+        if (_timerPeriodRaised)
+        {
+            timeEndPeriod(1);
+            _timerPeriodRaised = false;
+        }
     }
+
+    [LibraryImport("winmm.dll")]
+    private static partial uint timeBeginPeriod(uint period);
+
+    [LibraryImport("winmm.dll")]
+    private static partial uint timeEndPeriod(uint period);
 
     public override bool ValidMidiConnection() => _validConnection;
 
