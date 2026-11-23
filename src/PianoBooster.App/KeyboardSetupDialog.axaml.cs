@@ -109,8 +109,10 @@ public partial class KeyboardSetupDialog : Window
             int lowestNote = _settings.Value("Keyboard/LowestNote", 0);
             int highestNote = _settings.Value("Keyboard/HighestNote", 127);
 
-            string midiInputName = _settings.Value("Midi/Input");
-            if (midiInputName.StartsWith(Strings.Translate("GuiKeyboardSetupDialog", "None"), StringComparison.OrdinalIgnoreCase))
+            bool midiKeyboard;
+            lock (_sync)
+                midiKeyboard = _song.MidiInputOpen;
+            if (!midiKeyboard) // the PC keyboard: none chosen, or the chosen one is not connected
             {
                 lowestNote = Song.PcKeyLowestNote;
                 highestNote = Song.PcKeyHighestNote;
@@ -301,8 +303,6 @@ public partial class KeyboardSetupDialog : Window
         int highestNote = ToInt(highestNoteEdit);
         lowestNote = Math.Clamp(lowestNote, 0, 127);
         highestNote = Math.Clamp(highestNote, 0, 127);
-        lock (_sync)
-            Chord.SetPianoRange(lowestNote, highestNote);
         if (lowestNoteEdit.IsEnabled)
         {
             _settings.SetValue("Keyboard/LowestNote", lowestNote);
@@ -310,6 +310,7 @@ public partial class KeyboardSetupDialog : Window
         }
         lock (_sync)
         {
+            _song.UpdatePianoRange(); // the range of the input in use (the PC keys when no MIDI keyboard is open)
             _song.TestWrongNoteSound(false);
             _song.RegenerateChordQueue();
         }

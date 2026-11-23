@@ -494,6 +494,13 @@ de la interfaz con `Dispatcher.UIThread.Post`.
 - El botón "play from start" no es *checkable* (en Qt lo es, pero nunca se ve marcado de forma útil).
 - La página del tutor (`QTextBrowser`) se muestra con `HtmlText`, que solo entiende un HTML sencillo.
 - `refreshTranslate()` solo actualiza los avisos y la página del tutor (las traducciones, fase 6).
+- El rango de notas que se pueden tocar (las demás se dibujan oscurecidas) sigue a la entrada efectiva:
+  `Conductor.OpenMidiPort(Input)` lo fija según si el puerto se abrió (`MidiInputOpen`). Sin teclado MIDI
+  abierto (ninguno elegido, o el elegido no está conectado) son las teclas del PC, 58–75; con él,
+  `Keyboard/LowestNote`–`HighestNote`. El C++ comparaba el nombre de la entrada con `tr("None")`, y al
+  arrancar lo hacía antes de cargar la traducción: en otro idioma que el inglés, con "Ninguno (Teclado
+  PC)", arrancaba con 0–127 y pasaba a 58–75 al aceptar la configuración MIDI. El diálogo del teclado
+  también decide por `MidiInputOpen`, y tras los dos diálogos se rehace la partitura.
 
 ### Pendiente de la fase 5 (en la app, marcado en el código)
 

@@ -759,6 +759,8 @@ public partial class MainWindow : Window
         }
         finally
         {
+            lock (_sync)
+                _score.RefreshScroll(); // the notes that can be played may have changed with the input
             _midiDevice.FlushMidiInput();
             _glWidget.StartTimerEvent();
         }
@@ -788,6 +790,8 @@ public partial class MainWindow : Window
         var keyboardSetup = new KeyboardSetupDialog();
         keyboardSetup.Init(_song, _sync, _settings);
         await keyboardSetup.ShowDialog<bool?>(this);
+        lock (_sync)
+            _score.RefreshScroll(); // the range of the MIDI keyboard may have changed
     }
 
     /// <summary>Called by the settings when a song has been loaded.</summary>
@@ -907,7 +911,6 @@ public partial class MainWindow : Window
         Log.Info($"Translations: '{locale}' ({(Strings.Culture.Name.Length > 0 ? Strings.Culture.Name : "English")})");
 
         // the tr() of the classes without interface, with their contexts of the C++ code
-        Conductor.Translate = text => Strings.Translate("CConductor", text);
         MidiInfo.Translate = text => Strings.Translate("CMidiInfo", text);
         TrackList.Translate = text => Strings.Translate("QObject", text); // QObject::tr(); also tr() of CTrackList
         PianoBooster.Rendering.Draw.NoteNames = new[] { "C", "D", "E", "F", "G", "A", "B" }

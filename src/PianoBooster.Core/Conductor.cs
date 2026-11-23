@@ -73,6 +73,7 @@ public class Conductor
     private bool _keyboardLightsOn;
 
     private int _pianistSplitPoint; // Defines which notes go in the base and treble clef
+    private bool _midiInputOpen;    // a MIDI keyboard is the input (else the PC keyboard)
     private bool _followSkillAdvanced;
     private int _lastSound;
     private long _stopPoint; // Were we stop the music if the pianist is late
@@ -157,7 +158,34 @@ public class Conductor
     protected int CheckMidiInput() => MidiDevice?.CheckMidiInput() ?? 0;
     protected MidiEvent ReadMidiInput() => MidiDevice!.ReadMidiInput();
     public bool ValidMidiOutput() => MidiDevice?.ValidMidiOutput() ?? false;
-    public bool OpenMidiPort(MidiType type, string portName) => MidiDevice?.OpenMidiPort(type, portName) ?? false;
+
+    public bool OpenMidiPort(MidiType type, string portName)
+    {
+        bool opened = MidiDevice?.OpenMidiPort(type, portName) ?? false;
+        if (type == MidiType.Input)
+        {
+            _midiInputOpen = opened;
+            UpdatePianoRange();
+        }
+        return opened;
+    }
+
+    /// <summary>Whether the notes come from a MIDI keyboard (the input port is open). When it is
+    /// not, because none is chosen or the chosen one is not connected, the PC keyboard is used.</summary>
+    public bool MidiInputOpen => _midiInputOpen;
+
+    /// <summary>Sets the notes that can be played (and are not drawn dimmed) from the input in
+    /// use: the PC keyboard keys, or the range set for the MIDI keyboard. Unlike the C++ code, it
+    /// does not compare the name of the input with the translated "None": at start-up that ran
+    /// before the translation was loaded, so the range depended on how the input had been set.</summary>
+    public void UpdatePianoRange()
+    {
+        if (_midiInputOpen)
+            Chord.SetPianoRange(_settings?.GetInt("Keyboard/LowestNote", 0) ?? 0,
+                                _settings?.GetInt("Keyboard/HighestNote", 127) ?? 127);
+        else
+            Chord.SetPianoRange(Song.PcKeyLowestNote, Song.PcKeyHighestNote);
+    }
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -503,20 +531,11 @@ public class Conductor
         UpdatePianoSounds();
     }
 
-    /// <summary>The name of the "None" MIDI input (translated by the application).</summary>
-    public static Func<string, string> Translate = text => text;
-
     public void ReconnectMidi()
     {
         if (!ValidMidiOutput())
         {
-            string midiInputName = _settings!.GetString("Midi/Input");
-            if (midiInputName.StartsWith(Translate("None"), StringComparison.Ordinal))
-                Chord.SetPianoRange(Song.PcKeyLowestNote, Song.PcKeyHighestNote);
-            else
-                Chord.SetPianoRange(_settings.GetInt("Keyboard/LowestNote", 0),
-                                    _settings.GetInt("Keyboard/HighestNote", 127));
-            OpenMidiPort(MidiType.Input, midiInputName);
+            OpenMidiPort(MidiType.Input, _settings!.GetString("Midi/Input")); // also sets the piano range
             OpenMidiPort(MidiType.Output, _settings.GetString("Midi/Output"));
         }
         _settings!.UpdateWarningMessages();

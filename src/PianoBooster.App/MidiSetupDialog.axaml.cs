@@ -310,12 +310,7 @@ public partial class MidiSetupDialog : Window
         _settings.SetValue("Midi/Input", input);
         lock (_sync)
         {
-            _song.OpenMidiPort(MidiType.Input, input);
-            if (input.StartsWith(Strings.Translate("GuiMidiSetupDialog", "None"), StringComparison.Ordinal))
-                Chord.SetPianoRange(Song.PcKeyLowestNote, Song.PcKeyHighestNote);
-            else
-                Chord.SetPianoRange(_settings.Value("Keyboard/LowestNote", 0),
-                                    _settings.Value("Keyboard/HighestNote", 127));
+            _song.OpenMidiPort(MidiType.Input, input); // also sets the piano range of the input in use
 
             if (midiOutputCombo.SelectedIndex == 0)
             {
