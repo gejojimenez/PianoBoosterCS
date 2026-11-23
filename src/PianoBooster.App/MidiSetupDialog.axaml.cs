@@ -81,6 +81,8 @@ public partial class MidiSetupDialog : Window
                 AddItems(audioDriverCombo, "coreaudio", "portaudio");
             else if (!OperatingSystem.IsWindows()) // Q_OS_UNIX
                 AddItems(audioDriverCombo, "pulseaudio");
+            // On Windows FluidSynth always uses its default driver (DirectSound): nothing to choose.
+            label_8.IsEnabled = audioDriverCombo.IsEnabled = !OperatingSystem.IsWindows();
 
             if (_settings.GetFluidSoundFontNames().Count > 0)
             {
@@ -140,6 +142,8 @@ public partial class MidiSetupDialog : Window
             combo.SelectedIndex = -1;
             combo.Text = value;
         }
+        else if (combo.SelectedIndex == -1 && combo.ItemCount > 0)
+            SetCurrentIndex(combo, 0); // a filled QComboBox always has its first item selected
     }
 
     /// <summary>Like QIntValidator(bottom, top): only digits, and never more than top.</summary>

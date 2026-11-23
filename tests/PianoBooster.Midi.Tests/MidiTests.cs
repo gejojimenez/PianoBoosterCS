@@ -82,6 +82,20 @@ public class MessageTests
         Assert.False(device.OpenMidiPort(MidiType.Output, MidiDeviceFluidSynth.GetFluidInternalName()));
         Assert.False(device.ValidMidiConnection());
     }
+
+    [Theory]
+    [InlineData(22050, 128, 4, 4)]   // the default (23.2 ms) is kept
+    [InlineData(44100, 128, 4, 8)]   // 11.6 ms -> 23.2 ms
+    [InlineData(48000, 128, 4, 9)]   // 10.7 ms -> 24.0 ms
+    [InlineData(96000, 128, 4, 18)]  // 5.3 ms -> 24.0 ms
+    [InlineData(22050, 1024, 4, 4)]  // already long enough
+    [InlineData(22050, 128, 16, 16)] // never fewer periods than asked for
+    [InlineData(96000, 64, 4, 35)]   // 2.7 ms -> 23.3 ms
+    [InlineData(192000, 64, 4, 64)]  // capped at FluidSynth's maximum (the rate combo is editable)
+    public void DirectSoundBufferIsNeverTooShort(int sampleRate, int periodSize, int periods, int expected)
+    {
+        Assert.Equal(expected, MidiDeviceFluidSynth.DirectSoundSafePeriods(sampleRate, periodSize, periods));
+    }
 }
 
 public class ConductorThreadTests

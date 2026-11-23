@@ -82,9 +82,19 @@ public sealed partial class MidiDeviceFluidSynth : MidiDeviceBase
         _fluidSettings = new_fluid_settings();
 
         // Change the settings if necessary
-        fluid_settings_setnum(_fluidSettings, "synth.sample-rate", settings.GetInt("FluidSynth/sampleRateCombo", 22050));
-        fluid_settings_setint(_fluidSettings, "audio.period-size", settings.GetInt("FluidSynth/bufferSizeCombo", 128));
-        fluid_settings_setint(_fluidSettings, "audio.periods", settings.GetInt("FluidSynth/bufferCountCombo", 4));
+        int sampleRate = settings.GetInt("FluidSynth/sampleRateCombo", 22050);
+        int periodSize = settings.GetInt("FluidSynth/bufferSizeCombo", 128);
+        int periods = settings.GetInt("FluidSynth/bufferCountCombo", 4);
+        if (OperatingSystem.IsWindows())
+        {
+            int safePeriods = DirectSoundSafePeriods(sampleRate, periodSize, periods);
+            if (safePeriods != periods)
+                Log.Debug($"FluidSynth: {periodSize} x {periods} at {sampleRate} Hz is too short for DirectSound, using {periodSize} x {safePeriods}");
+            periods = safePeriods;
+        }
+        fluid_settings_setnum(_fluidSettings, "synth.sample-rate", sampleRate);
+        fluid_settings_setint(_fluidSettings, "audio.period-size", periodSize);
+        fluid_settings_setint(_fluidSettings, "audio.periods", periods);
 
         if (!OperatingSystem.IsWindows())
             fluid_settings_setstr(_fluidSettings, "audio.driver", settings.GetString("FluidSynth/audioDriverCombo", "pulseaudio"));
@@ -130,6 +140,24 @@ public sealed partial class MidiDeviceFluidSynth : MidiDeviceBase
         if (Cfg.LogLevel >= Cfg.LogLevelDebug)
             DebugSettings(_fluidSettings);
         return true;
+    }
+
+    /// <summary>The shortest ring buffer FluidSynth's DirectSound driver is given. DirectSound moves its
+    /// play cursor in 10 ms steps: measured with a 1 ms timer resolution, rings of 20 ms or less ran
+    /// dry (128 x 4 at 44100 or 48000 Hz, 128 x 15 at 96000 Hz), 20.3 to 21.3 ms played with little
+    /// margin, and 23.2 ms (the default 128 x 4 at 22050 Hz) and longer played correctly.</summary>
+    public const double DirectSoundMinBufferMs = 23.0;
+
+    private const int FluidMaxPeriods = 64; // the range of "audio.periods" is 2..64
+
+    /// <summary>The number of periods to use so that periodSize x periods lasts at least
+    /// <see cref="DirectSoundMinBufferMs"/>; never fewer than asked for, nor more than FluidSynth accepts.</summary>
+    public static int DirectSoundSafePeriods(int sampleRate, int periodSize, int periods)
+    {
+        if (sampleRate <= 0 || periodSize <= 0)
+            return periods;
+        int needed = (int)Math.Ceiling(DirectSoundMinBufferMs * sampleRate / (1000.0 * periodSize));
+        return Math.Max(periods, Math.Min(needed, FluidMaxPeriods));
     }
 
     private static unsafe void DebugSettings(IntPtr settings)
