@@ -23,7 +23,14 @@ internal sealed class CommandLine
 
 internal static class Program
 {
-    public const string Version = "1.3.11"; // PB_VERSION
+    /// <summary>PB_VERSION: the &lt;Version&gt; of Directory.Build.props (the only place to change it).</summary>
+    public static readonly string Version = VersionOfAssembly();
+
+    private static string VersionOfAssembly()
+    {
+        System.Version? v = typeof(Program).Assembly.GetName().Version;
+        return v == null ? "?" : $"{v.Major}.{v.Minor}.{v.Build}";
+    }
 
     /// <summary>The name of the program: PianoBoosterCS, to tell it from PianoBooster (C++). It is the
     /// name of the executable (AssemblyName) and is shown in the title of the main window.</summary>

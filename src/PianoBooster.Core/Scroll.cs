@@ -168,6 +168,8 @@ public sealed class Scroll
 
             if (headDelta > slotDetlta)
                 break;
+            if (_scrollQueue.Space == 0) // a very wide score: the rest of the slots come in later
+                break;
 
             if (_show)
             {

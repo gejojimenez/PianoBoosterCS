@@ -363,7 +363,8 @@ fase (sustituir el lock por una foto) ya no es necesario: el lock solo dura lo q
 ### Fallos encontrados en el original (no corregidos)
 
 - `CScore::drawPianoKeyboard` guarda el tamaño del teclado en una variable estática la primera vez
-  que lo dibuja: al cambiar el tamaño de la ventana el teclado no cambia (se reproduce igual).
+  que lo dibuja: al cambiar el tamaño de la ventana el teclado no cambia. El port lo reproducía;
+  corregido tras el port (partitura de ancho adaptable): el teclado se rehace al cambiar el ancho.
 - `CGLView::drawTimeSignature` usa `sprintf` en búferes de 10 caracteres (sin efecto con compases
   normales).
 

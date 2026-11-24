@@ -36,7 +36,15 @@ public static class Cfg
 
     public static float StaveStartX => 20;
     public static float StaveEndX => _staveEndX;
-    public static float PlayZoneX => ScrollStartX + (StaveEndX - ScrollStartX) * 0.4f;
+    /// <summary>
+    /// Where the notes are played: 40% of the way along the stave, like in C++, but measured on a
+    /// stave no longer than the one of the old 1024 wide score. So in a wider window the play zone
+    /// stays where it was and all the extra width shows more of the notes still to come.
+    /// </summary>
+    public static float PlayZoneX => ScrollStartX + (MathF.Min(StaveEndX, PlayZoneReferenceStaveEndX) - ScrollStartX) * 0.4f;
+
+    /// <summary>The end of the stave of a 1024 wide score (the widest score of the C++ version).</summary>
+    public const float PlayZoneReferenceStaveEndX = 1024 - 20;
     public static float ClefX => StaveStartX + 20;
     public static float TimeSignatureX => ClefX + 25;
     public static float KeySignatureX => TimeSignatureX + 25;

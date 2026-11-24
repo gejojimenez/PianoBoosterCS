@@ -62,7 +62,10 @@ public sealed class ViewRenderer : IDisposable
     /// <summary>The font of the texts ("Arial" in C++).</summary>
     public SKTypeface Typeface { get; set; }
 
-    /// <summary>The size of the score (Cfg::getAppWidth/Height): the window up to 1024 wide.</summary>
+    /// <summary>The widest the score gets (it was 1024 in C++).</summary>
+    public const int MaxScoreWidth = 4096;
+
+    /// <summary>The size of the score (Cfg::getAppWidth/Height): the window up to <see cref="MaxScoreWidth"/> wide.</summary>
     public SKRectI ScoreViewport => new(_viewportX, _windowHeight - _viewportY - _viewportHeight,
                                         _viewportX + _viewportWidth, _windowHeight - _viewportY);
 
@@ -72,7 +75,10 @@ public sealed class ViewRenderer : IDisposable
     /// </summary>
     public void Resize(int width, int height)
     {
-        const int maxSoreWidth = 1024;
+        // The C++ version stops the score at 1024 wide. Here it fills the window (the play zone
+        // stays where it was, see Cfg.PlayZoneX), up to a limit that keeps the scroll queue far
+        // from full on very wide screens.
+        const int maxSoreWidth = MaxScoreWidth;
         const int staveEndGap = 20;
         int heightAboveStave = (int)(StavePos.VerticalNoteSpacing * StavePos.MaxStaveIndex);
         int heightBelowStave = (int)(StavePos.VerticalNoteSpacing * -StavePos.MinStaveIndex);

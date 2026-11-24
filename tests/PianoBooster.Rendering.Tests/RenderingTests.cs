@@ -197,6 +197,62 @@ public sealed class RenderingTests
         Assert.True(result.PixelsPerSecond > 10);
         Assert.True(result.RmsDeviation < 0.05, result.ToString());
     }
+
+    private static float PlayZoneOf1024Score() =>
+        Cfg.ScrollStartX + (Cfg.PlayZoneReferenceStaveEndX - Cfg.ScrollStartX) * 0.4f;
+
+    [Fact]
+    public void AWideWindowFillsTheScoreAndKeepsThePlayZone()
+    {
+        int slotsAt1024;
+        using (var narrow = new ScoreHarness("bm03-SkipToMyLou.mid"))
+            slotsAt1024 = narrow.Run(3000).Scrolls[0].Slots.Count;
+
+        using var h = new ScoreHarness("bm03-SkipToMyLou.mid", width: 1700, height: 700);
+        FrameSnapshot frame = h.Run(3000);
+        using SKBitmap bitmap = h.Render(frame);
+        _output.WriteLine(ScoreHarness.Save(bitmap, "wide-1700-bm03"));
+
+        Assert.Equal(1700, h.Renderer.ScoreViewport.Width);
+        Assert.Equal(1680, Cfg.StaveEndX);
+        Assert.Equal(PlayZoneOf1024Score(), Cfg.PlayZoneX);
+        // more of the song ahead, on the right
+        Assert.True(frame.Scrolls[0].Slots.Count > slotsAt1024,
+                    $"{frame.Scrolls[0].Slots.Count} slots, {slotsAt1024} at 1024 wide");
+        SKRectI right = new(1100, h.Renderer.ScoreViewport.Top, 1680, h.Renderer.ScoreViewport.Bottom);
+        Assert.True(CountColor(bitmap, Rgb(Cfg.NoteColor), right) > 100, "no notes on the right");
+    }
+
+    [Fact]
+    public void ANarrowWindowKeepsThePlayZoneOfTheCppVersion()
+    {
+        using var h = new ScoreHarness("bm03-SkipToMyLou.mid", width: 700, height: 500);
+        Assert.Equal(Cfg.ScrollStartX + (680 - Cfg.ScrollStartX) * 0.4f, Cfg.PlayZoneX);
+    }
+
+    [Fact]
+    public void TheScoreFollowsTheWindowWhenItChangesSizeWhilePlaying()
+    {
+        using var h = new ScoreHarness("bm03-SkipToMyLou.mid", width: 1024, height: 700);
+        h.Run(2000);
+        float zone = Cfg.PlayZoneX;
+
+        foreach ((int width, int height) in new[] { (1900, 900), (800, 600), (2600, 700), (1024, 700), (5000, 800) })
+        {
+            h.Renderer.Resize(width, height); // what ScoreView does when the window changes size
+            FrameSnapshot frame = h.Run(1500);
+            int scoreWidth = Math.Min(width, ViewRenderer.MaxScoreWidth);
+            Assert.Equal(scoreWidth, h.Renderer.ScoreViewport.Width);
+            Assert.Equal(scoreWidth - 20, Cfg.StaveEndX);
+            if (width >= 1024)
+                Assert.Equal(zone, Cfg.PlayZoneX);
+            Assert.True(frame.Scrolls[0].Slots.Count > 3, $"only {frame.Scrolls[0].Slots.Count} slots at {width}");
+            using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            using (var canvas = new SKCanvas(bitmap))
+                h.Renderer.Render(canvas, frame, 1.0f);
+            _output.WriteLine(ScoreHarness.Save(bitmap, $"resize-{width}x{height}-bm03"));
+        }
+    }
 }
 
 [CollectionDefinition("statics", DisableParallelization = true)]

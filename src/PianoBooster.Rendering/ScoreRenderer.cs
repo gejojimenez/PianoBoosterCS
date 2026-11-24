@@ -105,10 +105,14 @@ public sealed class ScoreRenderer : Draw
         private bool _constructed;
         private GlCanvas _gl = null!;
 
-        // In C++ it is a static, made the first time the keyboard is drawn: its size does not
-        // follow the window when it is resized afterwards (see PORTING.md)
+        private float _builtForStaveEndX = float.NaN;
+
+        // In C++ it is a static, made the first time the keyboard is drawn, so its size did not
+        // follow the window. Here it is made again when the stave changes width: the keyboard
+        // always spans the stave, like the score does.
         private void Construct()
         {
+            _builtForStaveEndX = Cfg.StaveEndX;
             _i = 0; _k = 0;
             _yStart = 0.0f;
             _xSize = Cfg.StaveEndX - Cfg.StaveStartX;
@@ -194,6 +198,12 @@ public sealed class ScoreRenderer : Draw
         {
             if (!_constructed)
                 Construct();
+            else if (Cfg.StaveEndX != _builtForStaveEndX)
+            {
+                bool stopped = Stopped;
+                Construct();
+                Stopped = stopped;
+            }
         }
     }
 
