@@ -39,6 +39,9 @@
                   ToolTip.Tip="Change the piano keyboard settings" Click="OnShowKeyboardSetup" />
         <MenuItem x:Name="setupPreferencesAct" Header="_Preferences ..." InputGesture="Ctrl+P" ToolTip.Tip="Settings"
                   Click="OnShowPreferencesDialog" />
+        <Separator />
+        <MenuItem x:Name="profilesAct" Header="Pro_files ..." IsEnabled="False"
+                  ToolTip.Tip="Create, rename, delete and choose the user profiles" Click="OnShowProfilesDialog" />
       </MenuItem>
       <MenuItem x:Name="helpMenu" Header="_Help">
         <MenuItem Header="_Help" ToolTip.Tip="Piano Booster Help" Click="OnHelp" />

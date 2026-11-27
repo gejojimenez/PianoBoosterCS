@@ -105,6 +105,8 @@ public partial class MainWindow : Window
 
         sidePanel.Init(_song, _sync, _song.TrackList, topBar);
         topBar.Init(_song, _sync);
+        topBar.ProfilesRequested += () => OnShowProfilesDialog(null, new RoutedEventArgs());
+        ShowActiveProfile();
 
         lock (_sync)
         {
@@ -797,6 +799,31 @@ public partial class MainWindow : Window
         RefreshTranslate();
         lock (_sync)
             _score.RefreshScroll();
+    }
+
+    // Not in the C++: the user profiles (phase 1.5 of FEATURES.md). A change of the active profile
+    // reaches the practice session at once, so that the practice being played is thrown away
+    // instead of being saved for the new profile.
+    private async void OnShowProfilesDialog(object? sender, RoutedEventArgs e)
+    {
+        if (_progress is not { IsOpen: true } || _practice == null)
+            return;
+        var profilesDialog = new ProfilesDialog();
+        profilesDialog.Init(_progress, _settings.Store, _practice.ProfileId, id =>
+        {
+            _practice.ProfileId = id;
+            Log.Info($"Active profile: {id}");
+            ShowActiveProfile();
+        });
+        await profilesDialog.ShowDialog<bool?>(this);
+        ShowActiveProfile(); // it may have been renamed
+    }
+
+    private void ShowActiveProfile()
+    {
+        string? name = _practice != null && _progress != null ? _progress.Profile(_practice.ProfileId)?.Name : null;
+        topBar.SetProfileName(name);
+        profilesAct.IsEnabled = name != null;
     }
 
     private async void OnShowSongDetailsDialog(object? sender, RoutedEventArgs e)

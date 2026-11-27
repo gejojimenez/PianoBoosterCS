@@ -44,7 +44,7 @@ hecho" corto debajo de la fase.**
 | 1.2 | **hecha** (27 nov 2026) | `PracticeScorer`, `SongMaxScore`, `ScoringRules`. Rama `feature-1.2-scorer` |
 | 1.3 | **hecha** (27 nov 2026) | `ProgressStore` (`progress.db`), `IProgressStore`. Rama `feature-1.3-progress-db` |
 | 1.4 | **hecha** (27 nov 2026) | `PracticeSession`, `ActiveProfile` (perfil por defecto de D13 adelantado, sin interfaz). Rama `feature-1.4-practice-session` |
-| 1.5 | pendiente | Interfaz de perfiles (el perfil por defecto y `Profile/active` ya están, de 1.4) |
+| 1.5 | **hecha** (27 nov 2026) | `ProfilesDialog`, botón del perfil en la `TopBar` y `Configuración → Perfiles...`. Rama `feature-1.5-profiles-ui` |
 | 1.6 | pendiente | Resultado al terminar y historial |
 | 1.7 | pendiente | Cierre: traducciones, README, paquete |
 
@@ -432,6 +432,56 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
   `MainWindow.axaml` (menú o selector en la `TopBar` con el perfil activo); `Settings` (`Profile/active`).
 - Perfil por defecto (D13): ya hecho en 1.4 (`ActiveProfile`); falta solo la interfaz, que use `ActiveProfile.Set` y cambie `PracticeSession.ProfileId`. Sin perfil activo no se guarda nada (no debería pasar).
 - **Probar** en la app: crear dos perfiles, cambiar, reiniciar y que siga el activo.
+
+**Lo hecho (27 nov 2026):**
+
+- **Decisiones (aceptadas por el usuario):**
+  - **Cambiar de perfil durante una práctica la descarta** (como cualquier otro cambio a mitad, D8): no se
+    guarda ni para el perfil anterior ni para el nuevo. La siguiente práctica desde el inicio ya es del nuevo.
+  - **Borrar el perfil activo** se puede: pasa a ser activo el primero que quede por nombre (lo mismo que
+    `Resolve`). **El último perfil no se puede borrar** (botón desactivado), así siempre hay un perfil activo.
+  - **Selector:** un botón «Perfil: <nombre>» a la derecha de la `TopBar` que abre el diálogo (no un
+    combo, para no cambiar de perfil sin querer con el teclado mientras se toca) y `Configuración →
+    Perfiles...`. Sin `progress.db`, los dos están desactivados («Sin perfil»).
+- `Core/ProgressTypes.cs` + `Data/ProgressStore.cs`: `IProgressStore.PracticeCount(profileId)` (0 si no hay
+  o con error, sin lanzar), para la confirmación de borrado.
+- `App/ActiveProfile.cs`: `Delete(store, settings, id, activeId, out active)`: no borra el último (ni uno
+  que no existe), comprueba que se ha borrado y, si era el activo, deja activo el primero que queda
+  (`Profile/active`). Devuelve false si no se ha borrado.
+- `App/PracticeSession.cs`: `StillWhole` también descarta la práctica si `ProfileId` ya no es el de su
+  inicio. Una práctica ya terminada y aún sin guardar conserva su perfil; si ese perfil se ha borrado,
+  `SavePractice` da -1 y no se guarda nada (sin excepción).
+- `App/ProfilesDialog.axaml(.cs)`: lista por nombre con el activo en negrita y «(activo)»; botones «Usar
+  este perfil» (o doble clic), «Nuevo...», «Renombrar...», «Borrar...» y «Cerrar». Los cambios van a
+  `progress.db` en el momento (no hay Aceptar/Cancelar). El nombre se pide con `MessageDialog.GetText` y se
+  vuelve a pedir si está vacío o repetido (avisos propios). Borrar pregunta «¿Borrar el perfil «X»?» con
+  «También se borrarán sus N prácticas» / «No tiene prácticas» y «No se puede deshacer». El cambio de
+  perfil activo llega a la sesión **en el momento** (callback de `Init`), no al cerrar el diálogo.
+- `TopBar`: la raíz pasa a ser un `DockPanel` con el botón del perfil a la derecha (`SetProfileName`,
+  evento `ProfilesRequested`; se retraduce en `UpdateTranslate`). `MainWindow`: `OnShowProfilesDialog`,
+  `ShowActiveProfile` (al arrancar, al cambiar de perfil y al cerrar el diálogo, por si se renombró: el
+  nombre de la `TopBar` no cambia hasta cerrarlo) y la entrada del menú.
+- Textos nuevos en `Strings.es.resx` (diálogo, avisos, botón y menú `Per&files ...`, plural de
+  «%n práctica(s)»). También se han añadido **OK / Cancel / Yes / No** (Aceptar, Cancelar, Sí, No), que no
+  estaban y salían en inglés en todos los `MessageDialog`.
+- Pruebas: `PracticeSessionTests` (+4: cambio de perfil a mitad descartado y la siguiente para el nuevo,
+  borrar el activo a mitad, práctica terminada de un perfil borrado, `ActiveProfile.Delete` con otro, con
+  el activo y con el último) y `ProgressStoreTests` (`PracticeCount` antes y después de borrar, y sin base).
+  Las 72 de referencia, sin cambios; 0 avisos nuevos (solo el `CS0414` de siempre).
+- **Probado en la app** (`--settings=<scratchpad>\app\s.json` en español, sin salida MIDI,
+  `bc01-StartWithMiddleC.mid`, la tecla `t` mandada solo con la app delante y ratón absoluto):
+  - al arrancar, «Perfil: gejoj» (el de 1.4); «Borrar...» desactivado con un solo perfil;
+  - crear «Ana» y «Bea» (con «Ana» repetido: aviso «Ya hay un perfil que se llama «Ana»» y se vuelve a pedir);
+  - «Usar este perfil» con Ana: `Profile/active` = 2 y «Perfil: Ana» en la barra;
+  - Seguir desde el inicio, cambio a Bea en el compás 4 y hasta el final: nada guardado;
+  - Seguir entera con Bea: una práctica a nombre de Bea en el `progress.db` del scratchpad (`follow`,
+    `both`, 100 %, 0/170, 30 errores: la `t` pulsada antes de tiempo cuenta como equivocada, como en 1.4);
+  - cerrar y volver a abrir: sigue «Perfil: Bea» (`Profile/active` = 3);
+  - desde el menú, borrar Bea (la activa): «También se borrará su práctica», se borra con su práctica y
+    pasa a activa Ana; renombrar Ana a «Ana M»; borrar gejoj («No tiene prácticas»); con uno solo,
+    «Borrar...» desactivado;
+  - Seguir entera con «Ana M»: la práctica queda a su nombre.
+  Los ajustes y bases reales (`%APPDATA%\PianoBooster`) no se han tocado.
 
 #### 1.6 Resultado al terminar e historial (rama `feature-1.6-results-ui`, necesita 1.4 y 1.5)
 

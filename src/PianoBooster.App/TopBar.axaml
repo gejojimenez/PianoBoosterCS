@@ -3,38 +3,46 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="using:PianoBooster.App"
              x:Class="PianoBooster.App.TopBar">
-  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
-    <Button x:Name="playFromStartButton" ToolTip.Tip="Start playing music from the start"
-                  Padding="6,2" Click="OnPlayFromStartButtonClicked">
-      <Image Source="avares://PianoBoosterCS/images/play-from-start.png" Width="20" Height="20" />
+  <!-- Not in the C++: the active profile on the right (phase 1.5 of FEATURES.md) -->
+  <DockPanel>
+    <Button x:Name="profileButton" DockPanel.Dock="Right" Padding="8,2" Margin="6,2,0,2" VerticalAlignment="Center"
+            IsEnabled="False" ToolTip.Tip="The profile whose practices are saved: click to change it"
+            Click="OnProfileButtonClicked">
+      <TextBlock x:Name="profileText" TextTrimming="CharacterEllipsis" MaxWidth="200" />
     </Button>
-    <ToggleButton x:Name="playButton" ToolTip.Tip="Start and stop playing music"
-                  Padding="6,2" Click="OnPlayButtonClicked">
-      <Image x:Name="playButtonImage" Source="avares://PianoBoosterCS/images/play.png" Width="20" Height="20" />
-    </ToggleButton>
-    <TextBlock x:Name="label_2" Text="Speed:" VerticalAlignment="Center" Margin="6,0,0,0" />
-    <NumericUpDown x:Name="speedSpin" Minimum="20" Maximum="200" Increment="2" Value="100"
-                   FormatString="0" MinWidth="100" VerticalAlignment="Center"
-                   ValueChanged="OnSpeedSpinValueChanged" />
-    <TextBlock Text="%" VerticalAlignment="Center" />
-    <TextBlock x:Name="label_5" Text="Key:" VerticalAlignment="Center" Margin="6,0,0,0" />
-    <ComboBox x:Name="keyCombo" MinWidth="64" VerticalAlignment="Center" SelectionChanged="OnKeyComboActivated" />
-    <ComboBox x:Name="majorCombo" MinWidth="80" VerticalAlignment="Center" SelectionChanged="OnMajorComboActivated" />
-    <TextBlock x:Name="label" Text="Transpose:" VerticalAlignment="Center" Margin="6,0,0,0" />
-    <NumericUpDown x:Name="transposeSpin" Minimum="-12" Maximum="12" Increment="1" Value="0"
-                   FormatString="0" MinWidth="90" VerticalAlignment="Center"
-                   ValueChanged="OnTransposeSpinValueChanged" />
-    <ToggleButton x:Name="loopingBarsPopupButton" Margin="6,0,0,0" Padding="8,2" VerticalAlignment="Center"
-                  Click="OnLoopingBarsPopupButtonClicked">
-      <TextBlock x:Name="loopingBarsPopupText" Text="Start / Repeat" TextTrimming="CharacterEllipsis" MaxWidth="260" />
-    </ToggleButton>
-    <Popup x:Name="loopingPopupHost" PlacementTarget="{Binding #loopingBarsPopupButton}" Placement="BottomEdgeAlignedLeft"
-           IsLightDismissEnabled="True" Closed="OnLoopingPopupClosed">
-      <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1"
-              Padding="8" CornerRadius="4">
-        <app:LoopingPopup x:Name="loopingPopup" />
-      </Border>
-    </Popup>
-  </StackPanel>
+    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2" ClipToBounds="True">
+      <Button x:Name="playFromStartButton" ToolTip.Tip="Start playing music from the start"
+                    Padding="6,2" Click="OnPlayFromStartButtonClicked">
+        <Image Source="avares://PianoBoosterCS/images/play-from-start.png" Width="20" Height="20" />
+      </Button>
+      <ToggleButton x:Name="playButton" ToolTip.Tip="Start and stop playing music"
+                    Padding="6,2" Click="OnPlayButtonClicked">
+        <Image x:Name="playButtonImage" Source="avares://PianoBoosterCS/images/play.png" Width="20" Height="20" />
+      </ToggleButton>
+      <TextBlock x:Name="label_2" Text="Speed:" VerticalAlignment="Center" Margin="6,0,0,0" />
+      <NumericUpDown x:Name="speedSpin" Minimum="20" Maximum="200" Increment="2" Value="100"
+                     FormatString="0" MinWidth="100" VerticalAlignment="Center"
+                     ValueChanged="OnSpeedSpinValueChanged" />
+      <TextBlock Text="%" VerticalAlignment="Center" />
+      <TextBlock x:Name="label_5" Text="Key:" VerticalAlignment="Center" Margin="6,0,0,0" />
+      <ComboBox x:Name="keyCombo" MinWidth="64" VerticalAlignment="Center" SelectionChanged="OnKeyComboActivated" />
+      <ComboBox x:Name="majorCombo" MinWidth="80" VerticalAlignment="Center" SelectionChanged="OnMajorComboActivated" />
+      <TextBlock x:Name="label" Text="Transpose:" VerticalAlignment="Center" Margin="6,0,0,0" />
+      <NumericUpDown x:Name="transposeSpin" Minimum="-12" Maximum="12" Increment="1" Value="0"
+                     FormatString="0" MinWidth="90" VerticalAlignment="Center"
+                     ValueChanged="OnTransposeSpinValueChanged" />
+      <ToggleButton x:Name="loopingBarsPopupButton" Margin="6,0,0,0" Padding="8,2" VerticalAlignment="Center"
+                    Click="OnLoopingBarsPopupButtonClicked">
+        <TextBlock x:Name="loopingBarsPopupText" Text="Start / Repeat" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+      </ToggleButton>
+      <Popup x:Name="loopingPopupHost" PlacementTarget="{Binding #loopingBarsPopupButton}" Placement="BottomEdgeAlignedLeft"
+             IsLightDismissEnabled="True" Closed="OnLoopingPopupClosed">
+        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="1"
+                Padding="8" CornerRadius="4">
+          <app:LoopingPopup x:Name="loopingPopup" />
+        </Border>
+      </Popup>
+    </StackPanel>
+  </DockPanel>
 </UserControl>

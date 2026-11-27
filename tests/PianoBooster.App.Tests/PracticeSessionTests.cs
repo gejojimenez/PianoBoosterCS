@@ -193,6 +193,80 @@ public sealed class PracticeSessionTests : IDisposable
         Assert.Equal(90, _store.LastPractice(_profileId, _songId, PlayMode.FollowYou, WhichPart.Right)!.Speed);
     }
 
+    [Fact]
+    public void AChangeOfProfileDuringThePracticeThrowsItAway()
+    {
+        long bea = _store.CreateProfile("Bea");
+        Start();
+        PlayChord(Chord(1, 0, 60, 64));
+        _session.ProfileId = bea; // chosen in the profiles dialog while playing
+        PlayChord(Chord(2, 1, 62));
+        Assert.False(_session.IsPractising);
+        Tell(new PlayingStopped(true));
+        Assert.Equal(0, _session.SaveFinished());
+        Assert.Equal(0, _store.PracticeCount(_profileId));
+        Assert.Equal(0, _store.PracticeCount(bea));
+
+        _state.CurrentPosition = default;
+        Start(); // the next one is for the new profile
+        PlaySong();
+        Assert.Equal(1, _session.SaveFinished());
+        Assert.Equal(0, _store.PracticeCount(_profileId));
+        Assert.Equal(1, _store.PracticeCount(bea));
+    }
+
+    [Fact]
+    public void DeletingTheActiveProfileDuringThePracticeSavesNothing()
+    {
+        var settings = new SettingsStore(Path.Combine(_folder, "s.json"));
+        long bea = _store.CreateProfile("Bea");
+        ActiveProfile.Set(settings, _profileId);
+        Start();
+        PlayChord(Chord(1, 0, 60, 64));
+        Assert.True(ActiveProfile.Delete(_store, settings, _profileId, _profileId, out long active));
+        _session.ProfileId = active;
+        Assert.Equal(bea, active);
+        PlayChord(Chord(2, 1, 62));
+        Tell(new PlayingStopped(true));
+        Assert.Equal(0, _session.SaveFinished());
+        Assert.Equal(0, _store.PracticeCount(bea));
+    }
+
+    [Fact]
+    public void APracticeThatEndedIsNotSavedIfItsProfileIsDeletedFirst()
+    {
+        _store.CreateProfile("Bea");
+        Start();
+        PlaySong();
+        _store.DeleteProfile(_profileId);
+        Assert.Equal(0, _session.SaveFinished()); // no exception: the store refuses it
+    }
+
+    [Fact]
+    public void DeletingAProfileChoosesTheNextActiveOneAndNeverTheLast()
+    {
+        var settings = new SettingsStore(Path.Combine(_folder, "s.json"));
+        long bea = _store.CreateProfile("Bea");
+        long carla = _store.CreateProfile("Carla");
+        ActiveProfile.Set(settings, carla);
+
+        // another profile than the active one: the active one stays
+        Assert.True(ActiveProfile.Delete(_store, settings, bea, carla, out long active));
+        Assert.Equal(carla, active);
+        Assert.Equal(carla, ActiveProfile.Resolve(_store, settings, "X"));
+
+        // the active one: the first that is left (by name) becomes the active one
+        Assert.True(ActiveProfile.Delete(_store, settings, carla, carla, out active));
+        Assert.Equal(_profileId, active);
+        Assert.Equal(_profileId, ActiveProfile.Resolve(_store, settings, "X"));
+
+        // the last one is not deleted
+        Assert.False(ActiveProfile.Delete(_store, settings, _profileId, _profileId, out active));
+        Assert.Equal(_profileId, active);
+        Assert.NotNull(_store.Profile(_profileId));
+        Assert.Single(_store.Profiles());
+    }
+
     [Theory]
     [InlineData(PlayMode.Listen)]
     [InlineData(PlayMode.RhythmTapping)]

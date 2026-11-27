@@ -1,0 +1,36 @@
+<!-- Not in the C++ code: the user profiles (phase 1.5 of FEATURES.md). The changes are made in
+     progress.db at once, so there is only a Close button. GPLv3, like the rest of PianoBoosterCS. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.ProfilesDialog"
+        Title="Profiles" Width="460" Height="340" MinWidth="380" MinHeight="260"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="9">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                Margin="0,9,0,0">
+      <Button x:Name="closeButton" Content="Close" MinWidth="80" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCloseButtonClicked" />
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,6"
+               Text="The whole songs that you practise are saved for the active profile." />
+
+    <StackPanel DockPanel.Dock="Right" Spacing="6" Margin="9,0,0,0" MinWidth="130">
+      <Button x:Name="useButton" Content="_Use This Profile" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" ToolTip.Tip="Make the chosen profile the active one"
+              Click="OnUseButtonClicked" />
+      <Button x:Name="newButton" Content="_New..." HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" ToolTip.Tip="Create a new profile"
+              Click="OnNewButtonClicked" />
+      <Button x:Name="renameButton" Content="_Rename..." HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" ToolTip.Tip="Rename the chosen profile"
+              Click="OnRenameButtonClicked" />
+      <Button x:Name="deleteButton" Content="_Delete..." HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" ToolTip.Tip="Delete the chosen profile and all its practices"
+              Click="OnDeleteButtonClicked" />
+    </StackPanel>
+
+    <ListBox x:Name="profileList" SelectionMode="Single" SelectionChanged="OnProfileListSelectionChanged"
+             DoubleTapped="OnProfileListDoubleTapped" />
+  </DockPanel>
+</Window>
