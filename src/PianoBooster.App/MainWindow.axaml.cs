@@ -33,6 +33,8 @@ public partial class MainWindow : Window
     private readonly CommandLine _commandLine = new();
     private readonly Settings _settings = null!;
     private readonly Library? _library;
+    private readonly ProgressStore? _progress;
+    private readonly PracticeSession? _practice;
     private readonly MidiDevice _midiDevice = null!;
     private readonly ConductorThread _conductor = null!;
     private readonly Song _song = null!;
@@ -65,6 +67,8 @@ public partial class MainWindow : Window
         // in the folder of the settings, where the C++ keeps its library.db (the same file is shared)
         _library = store.Folder is string folder ? new Library(folder) : null;
         _settings.SetLibrary(_library);
+        // the practices of the user profiles, next to it in progress.db (D12)
+        _progress = store.Folder is string progressFolder ? new ProgressStore(progressFolder) : null;
         Title = Program.Name + " " + Program.Version; // the name is not translated
 
         // Cfg::setDefaults() and decodeCommandLine(): see Program
@@ -80,6 +84,7 @@ public partial class MainWindow : Window
         _score = new Score(_settings);
         _conductor = new ConductorThread(_song);
         _sync = _conductor.SyncRoot;
+        _practice = StartPracticeSession(store);
         _glWidget = new ScoreView(_song, _score, _settings, _conductor)
         {
             WarningMessageSource = _settings.GetWarningMessage,
@@ -125,6 +130,20 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Bubble, handledEventsToo: false);
         AddHandler(KeyUpEvent, OnWindowKeyUp, RoutingStrategies.Bubble, handledEventsToo: false);
+    }
+
+    // The whole practices are scored and saved for the active profile (none: as before, no observer)
+    private PracticeSession? StartPracticeSession(SettingsStore store)
+    {
+        if (_progress is not { IsOpen: true })
+            return null;
+        long profileId = ActiveProfile.Resolve(_progress, store, ActiveProfile.DefaultName(Strings.Tr("User")));
+        if (profileId < 0)
+            return null;
+        var practice = new PracticeSession(_progress, new SongPracticeState(_song)) { ProfileId = profileId };
+        lock (_sync)
+            _song.PerformanceObserver = practice;
+        return practice;
     }
 
     // CGLView::initializeGL(), which calls QtWindow::init(): when the window is first shown
@@ -198,12 +217,15 @@ public partial class MainWindow : Window
         _song.PlayMusic(false); // all the sounds off
         _midiDevice.Dispose();
         _library?.Dispose(); // delete m_library
+        _practice?.SaveFinished(); // one that ended just before closing
+        _progress?.Dispose();
     }
 
     public void SongEventUpdated(uint eventBits)
     {
         if ((eventBits & EventBits.PlayingStopped) != 0)
         {
+            _practice?.SaveFinished();
             if (sidePanel.IsRepeatSong())
                 topBar.On_playFromStartButton_clicked();
             else
@@ -803,6 +825,11 @@ public partial class MainWindow : Window
         lock (_sync)
             title = _song.SongTitle;
         sidePanel.SetSongInfo(title, fileName, info);
+        _practice?.SongLoaded(fileName, title, () =>
+        {
+            lock (_sync) // after LoadSong, with the hands of its piano part
+                return SongMaxScore.FromMidiFile(fileName, _song.ActiveChannel);
+        });
         sidePanel.LoadParts(); // the song starts from the beginning, with no part selected
         Title = Program.Name + " " + Program.Version + " - " + title;
     }

@@ -43,8 +43,8 @@ hecho" corto debajo de la fase.**
 | 1.1 | **hecha** (27 nov 2026) | Eventos de interpretación en el `Conductor`. Rama `feature-1.1-performance-events` |
 | 1.2 | **hecha** (27 nov 2026) | `PracticeScorer`, `SongMaxScore`, `ScoringRules`. Rama `feature-1.2-scorer` |
 | 1.3 | **hecha** (27 nov 2026) | `ProgressStore` (`progress.db`), `IProgressStore`. Rama `feature-1.3-progress-db` |
-| 1.4 | pendiente | Sesión de práctica en la app (canción entera → registro) |
-| 1.5 | pendiente | Interfaz de perfiles |
+| 1.4 | **hecha** (27 nov 2026) | `PracticeSession`, `ActiveProfile` (perfil por defecto de D13 adelantado, sin interfaz). Rama `feature-1.4-practice-session` |
+| 1.5 | pendiente | Interfaz de perfiles (el perfil por defecto y `Profile/active` ya están, de 1.4) |
 | 1.6 | pendiente | Resultado al terminar y historial |
 | 1.7 | pendiente | Cierre: traducciones, README, paquete |
 
@@ -374,11 +374,63 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
   ordenador como entrada, ver `KeyboardSetupDialog`): la práctica entera queda en `progress.db` del
   scratchpad; parar a mitad o tocar una sección no deja nada.
 
+**Lo hecho (27 nov 2026):**
+
+- **Perfil (D13 adelantado, aceptado por el usuario):** `App/ActiveProfile.cs`. `Resolve(store, settings,
+  defaultName)` al arrancar: el perfil de `Profile/active` (se guarda el **id**, así renombrarlo no lo
+  pierde) si existe; si no, el primero de `Profiles()`; si no hay ninguno, crea uno con el nombre de
+  la cuenta de Windows (`DefaultName`, y si sale vacío `Strings.Tr("User")` = «Usuario») y lo deja en
+  `Profile/active`. Sin `progress.db` o si no se puede crear: -1 y no se guarda nada (`Log.Warn`).
+  `Set(settings, id)` queda para el selector de 1.5. Sin interfaz.
+- `App/PracticeSession.cs`: `PracticeSession : IPerformanceObserver`, el `PerformanceObserver` del
+  `Song` solo si hay perfil (si no, el `Conductor` sigue sin observador, como antes). Lo que lee del
+  `Conductor` va por `IPracticeState` (`SongPracticeState` en la app, uno falso en las pruebas): modo,
+  mano, velocidad en %, canal activo, `LoopActive`, `PlayFrom` y `CurrentNotePosition`.
+  - Empieza una práctica (con un `PracticeScorer` nuevo) en `PlayingStarted` si hay perfil y canción,
+    el modo es Seguir o Acompañar (D10), `From` es el inicio, no hay bucle (`LoopActive` del evento y
+    del `Conductor`) y **la canción está de verdad en el inicio** (`CurrentNotePosition`). Ojo: al
+    reanudar tras una pausa (`P`, `On_playButton_clicked` sin `Rewind`) el `Conductor` vuelve a decir
+    `PlayingStarted(From = inicio)` aunque siga desde la mitad; eso no cuenta como práctica entera.
+  - Se descarta (D8) si en cualquier evento cambia la canción, el modo, la mano, la velocidad (D9: se
+    guarda la del inicio, así que cambiarla a mitad la descarta), el instrumento, se activa un bucle o
+    sección o «desde el compás», o un `ChordExpected` va hacia atrás en ticks (vuelta de un bucle).
+    Parar a mano, cambiar de canción o cerrar dan `PlayingStopped(false)` y no dejan nada.
+  - Con `PlayingStopped(ReachedEnd)` y `Result.ReachedEnd` (y alguna nota pedida) el registro
+    (`PracticeRecord.FromResult`, fin = ahora) queda en una lista en memoria. `SaveFinished()` lo
+    guarda desde el hilo de la interfaz: en `MainWindow.SongEventUpdated` con el bit `PlayingStopped`
+    (antes de «Repetir canción», que vuelve a empezar) y en `Shutdown`. El lock propio de la sesión se
+    toma siempre después del de la canción, nunca al revés.
+  - `SongLoaded(path, title, maxScore)` desde `MainWindow.SongLoaded` (después de `LoadSong`):
+    `GetOrCreateSong` por `Library.FileHash`; si la canción no tiene máxima (nueva, o el hash cambió)
+    llama a `SongMaxScore.FromMidiFile(path, ActiveChannel)` con el lock de la canción y la guarda.
+    Es la máxima nominal del canal activo al cargar; si luego se elige otro instrumento no se recalcula.
+  - Nada lanza excepciones (`ProgressStore` y `PracticeScorer` tampoco).
+- `MainWindow`: abre `ProgressStore` en `store.Folder` junto a `library.db` y lo cierra en `Shutdown`.
+  Texto nuevo: «User» → «Usuario» en `Strings.es.resx`.
+- Pruebas: `PracticeSessionTests` (App.Tests, 21 casos con estado falso y `progress.db` temporal):
+  práctica entera guardada con sus datos y errores, Acompañar aparte, parar a mitad, desde un compás /
+  sección / bucle, reanudar tras pausa, cada cambio a mitad (bucle, desde, modo, mano, velocidad,
+  instrumento, canción, vuelta atrás), la siguiente práctica tras una descartada, Escuchar/Ritmo, sin
+  perfil o canción, máxima calculada solo si falta (canción movida, cambiada, ilegible) y el perfil
+  por defecto (creado una vez, sigue tras renombrar, el primero si se borra el activo, sin base).
+  Las 72 de referencia, sin cambios (Core no se ha tocado).
+- **Probado en la app** (`--settings=<scratchpad>\app\s.json`, sin salida MIDI, `bc01-StartWithMiddleC.mid`
+  copiado al scratchpad, la tecla `t` que toca el acorde esperado mandada a la ventana de la app):
+  - al arrancar crea el perfil con el nombre de la cuenta y `Profile/active` = 1, y la canción con su
+    máxima nominal (90 + 80);
+  - Seguir parando con `P` en el compás 3: nada;
+  - Seguir entera: una práctica (`follow`, `both`, 100 %, 26 s, máxima real 170, 52 errores);
+  - sección «Bars 1-3» (añadida al `library.db` del scratchpad) elegida en el panel y repetida: nada;
+  - pausa y seguir hasta el final: nada;
+  - Acompañar entera: otra práctica (`playalong`, 160/170).
+  Al pulsar `t` mucho antes de tiempo (fuera de la ventana de D2b), la nota cuenta como equivocada
+  aunque sea la esperada (D7). Por eso hay errores `wrong` con nota esperada = tocada.
+
 #### 1.5 Interfaz de perfiles (rama `feature-1.5-profiles-ui`, necesita 1.3)
 
 - **C#:** nuevo `App/ProfilesDialog.axaml(.cs)` (crear, renombrar, borrar con confirmación, elegir);
   `MainWindow.axaml` (menú o selector en la `TopBar` con el perfil activo); `Settings` (`Profile/active`).
-- Perfil por defecto (D13). Sin perfil activo no se guarda nada (no debería pasar).
+- Perfil por defecto (D13): ya hecho en 1.4 (`ActiveProfile`); falta solo la interfaz, que use `ActiveProfile.Set` y cambie `PracticeSession.ProfileId`. Sin perfil activo no se guarda nada (no debería pasar).
 - **Probar** en la app: crear dos perfiles, cambiar, reiniciar y que siga el activo.
 
 #### 1.6 Resultado al terminar e historial (rama `feature-1.6-results-ui`, necesita 1.4 y 1.5)
