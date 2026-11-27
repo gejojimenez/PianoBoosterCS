@@ -227,11 +227,15 @@ public partial class MainWindow : Window
     {
         if ((eventBits & EventBits.PlayingStopped) != 0)
         {
-            _practice?.SaveFinished();
+            List<SavedPractice>? saved = _practice?.SaveFinished();
             if (sidePanel.IsRepeatSong())
-                topBar.On_playFromStartButton_clicked();
+                topBar.On_playFromStartButton_clicked(); // no result: it would stop the repeats (phase 1.6)
             else
+            {
                 topBar.SetPlayButtonState(false, true);
+                if (saved is { Count: > 0 })
+                    ShowPracticeResult(saved[^1]);
+            }
         }
         if ((eventBits & EventBits.LoadSong) != 0)
             topBar.SetPlayButtonState(false, true);
@@ -824,6 +828,43 @@ public partial class MainWindow : Window
         string? name = _practice != null && _progress != null ? _progress.Profile(_practice.ProfileId)?.Name : null;
         topBar.SetProfileName(name);
         profilesAct.IsEnabled = name != null;
+        historyAct.IsEnabled = name != null;
+    }
+
+    // Not in the C++: the result of a whole practice that has just been saved (phase 1.6 of
+    // FEATURES.md). Nothing may throw here: there is no global handler of exceptions.
+    private async void ShowPracticeResult(SavedPractice saved)
+    {
+        try
+        {
+            string title;
+            lock (_sync)
+                title = _song.SongTitle;
+            var resultDialog = new PracticeResultDialog();
+            resultDialog.Init(saved, title);
+            await resultDialog.ShowDialog<bool?>(this);
+        }
+        catch (Exception e)
+        {
+            Log.Error($"The result of the practice {saved.Practice.Id} could not be shown: {e.Message}");
+        }
+    }
+
+    // Not in the C++: the history of the practices of the active profile (phase 1.6 of FEATURES.md)
+    private async void OnShowProgressDialog(object? sender, RoutedEventArgs e)
+    {
+        if (_progress is not { IsOpen: true } || _practice == null)
+            return;
+        try
+        {
+            var progressDialog = new ProgressDialog();
+            progressDialog.Init(_progress, _practice.ProfileId, _practice.SongId);
+            await progressDialog.ShowDialog<bool?>(this);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"The history of the practices could not be shown: {ex.Message}");
+        }
     }
 
     private async void OnShowSongDetailsDialog(object? sender, RoutedEventArgs e)

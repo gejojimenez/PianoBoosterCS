@@ -75,6 +75,65 @@ public sealed class TranslationTests : IDisposable
         Assert.Equal("Do", Text("es", () => Strings.Translate("CDraw", "C")));
     }
 
+    // Phase 1.6: the names of the notes in the results (Draw.NoteNames and the key signature are
+    // static too, so they are here and put back)
+    [Fact]
+    public void NoteNamesOfTheResults()
+    {
+        string[] names = Rendering.Draw.NoteNames;
+        try
+        {
+            Assert.Equal(new[] { "C4", "C♯4", "E♭4", "B♭4", "B3", "A0", "C8" },
+                new int?[] { 60, 61, 63, 70, 59, 21, 108 }.Select(n => NoteText.Name(n)));
+            Assert.Equal(NoteText.None, NoteText.Name(null));
+            Assert.Equal(NoteText.None, NoteText.Name(128));
+
+            Core.StavePos.SetKeySignature(-6, 0); // G♭ major: flats (the white keys keep their names, as in the score)
+            Assert.Equal(new[] { "G♭4", "D♭5", "B4" }, new int?[] { 66, 73, 71 }.Select(n => NoteText.Name(n)));
+            Assert.Equal("F♯4", NoteText.Name(66, keyOfC: true)); // not the loaded song
+            Core.StavePos.SetKeySignature(2, 0); // D major: sharps
+            Assert.Equal("D♯4", NoteText.Name(63));
+
+            Rendering.Draw.NoteNames = new[] { "C", "D", "E", "F", "G", "A", "B" }
+                .Select(n => Text("es", () => Strings.Translate("CDraw", n))).ToArray();
+            Assert.Equal("Do♯4", NoteText.Name(61));
+        }
+        finally
+        {
+            Rendering.Draw.NoteNames = names;
+            Core.StavePos.SetKeySignature(0, 0);
+        }
+    }
+
+    [Fact]
+    public void TextsOfTheResults()
+    {
+        Assert.Equal("1 error", Text("es", () => Strings.TrPlural("%n error(s)", 1)));
+        Assert.Equal("3 errores", Text("es", () => Strings.TrPlural("%n error(s)", 3)));
+        Assert.Equal("¡Nueva mejor marca! 1 punto porcentual más.",
+            Text("es", () => Strings.TrPlural("New best! %n percentage point(s) better.", 1)));
+        Assert.Equal("Nota equivocada", Text("es", () => PracticeText.Kind(Core.PracticeErrorKind.Wrong)));
+        Assert.Equal("Ambas manos", Text("es", () => PracticeText.Hand(Core.WhichPart.Both)));
+        Assert.Equal("Sigue", Text("es", () => PracticeText.Mode(Core.PlayMode.FollowYou)));
+        Assert.Equal("Prácticas de A (Sigue, Mano derecha)", Text("es", () => Strings.Tr("Practices of %1 (%2, %3)",
+            "A", PracticeText.Mode(Core.PlayMode.FollowYou), PracticeText.Hand(Core.WhichPart.Right))));
+        Assert.Equal("Wrong note", Text("de", () => PracticeText.Kind(Core.PracticeErrorKind.Wrong)));
+
+        var practice = new Core.PracticeRecord
+        {
+            Score = 139, MaxScore = 170, Started = new DateTime(2026, 11, 27, 18, 0, 0),
+            Ended = new DateTime(2026, 11, 27, 18, 2, 5),
+        };
+        Assert.Equal("139 / 170 (81 %)", Text("", () => PracticeText.Score(practice))); // 81.76: rounded down
+        Assert.Equal("2:05", PracticeText.Duration(practice));
+        Assert.Equal("Adelanto: 1   Retraso: 0   Nota equivocada: 2   Omitida: 0", Text("es", () => PracticeText.Counts(new[]
+        {
+            new Core.PracticeError(0, 0, 0, Core.PracticeErrorKind.Wrong, 60, 61, Core.WhichPart.Right),
+            new Core.PracticeError(0, 0, 0, Core.PracticeErrorKind.Early, 60, 60, Core.WhichPart.Right),
+            new Core.PracticeError(1, 0, 0, Core.PracticeErrorKind.Wrong, 62, 61, Core.WhichPart.Right),
+        })));
+    }
+
     [Fact]
     public void Plurals()
     {

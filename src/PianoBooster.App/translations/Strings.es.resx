@@ -1617,4 +1617,130 @@ Los archivos no se borran, y las canciones conservan sus favoritas y estadístic
   <data name="No profile" xml:space="preserve">
     <value>Sin perfil</value>
   </data>
+  <data name="Practice Result" xml:space="preserve">
+    <value>Resultado de la práctica</value>
+  </data>
+  <data name="No errors. Well done!" xml:space="preserve">
+    <value>Sin errores. ¡Muy bien!</value>
+  </data>
+  <data name="Practice History" xml:space="preserve">
+    <value>Historial de prácticas</value>
+  </data>
+  <data name="Show &amp;Errors..." xml:space="preserve">
+    <value>Ver &amp;errores...</value>
+  </data>
+  <data name="Show the result of the chosen practice with its errors" xml:space="preserve">
+    <value>Ver el resultado de la práctica elegida con sus errores</value>
+  </data>
+  <data name="There are no practices yet. The whole songs that you practise in Follow You or Play Along are saved here." xml:space="preserve">
+    <value>Todavía no hay prácticas. Aquí se guardan las canciones enteras que practiques en Sigue o Acompaña.</value>
+  </data>
+  <data name="Songs" xml:space="preserve">
+    <value>Canciones</value>
+  </data>
+  <data name="Practice &amp;History ..." xml:space="preserve">
+    <value>&amp;Historial de prácticas...</value>
+  </data>
+  <data name="The practices of the whole songs of the active profile" xml:space="preserve">
+    <value>Las prácticas de canciones enteras del perfil activo</value>
+  </data>
+  <data name="Both hands" xml:space="preserve">
+    <value>Ambas manos</value>
+  </data>
+  <data name="Early" xml:space="preserve">
+    <value>Adelanto</value>
+  </data>
+  <data name="Late" xml:space="preserve">
+    <value>Retraso</value>
+  </data>
+  <data name="Wrong note" xml:space="preserve">
+    <value>Nota equivocada</value>
+  </data>
+  <data name="Missed" xml:space="preserve">
+    <value>Omitida</value>
+  </data>
+  <data name="Speed %1" xml:space="preserve">
+    <value>Velocidad %1</value>
+  </data>
+  <data name="Duration %1" xml:space="preserve">
+    <value>Duración %1</value>
+  </data>
+  <data name="This is your first practice of this song in this mode and with this hand." xml:space="preserve">
+    <value>Es tu primera práctica de esta canción en este modo y con esta mano.</value>
+  </data>
+  <data name="Best before: %1, on %2" xml:space="preserve">
+    <value>Mejor anterior: %1, el %2</value>
+  </data>
+  <data name="New best! %n percentage point(s) better.#0" xml:space="preserve">
+    <value>¡Nueva mejor marca! %n punto porcentual más.</value>
+  </data>
+  <data name="New best! %n percentage point(s) better.#1" xml:space="preserve">
+    <value>¡Nueva mejor marca! %n puntos porcentuales más.</value>
+  </data>
+  <data name="New best!" xml:space="preserve">
+    <value>¡Nueva mejor marca!</value>
+  </data>
+  <data name="%n percentage point(s) below your best.#0" xml:space="preserve">
+    <value>%n punto porcentual por debajo de tu mejor marca.</value>
+  </data>
+  <data name="%n percentage point(s) below your best.#1" xml:space="preserve">
+    <value>%n puntos porcentuales por debajo de tu mejor marca.</value>
+  </data>
+  <data name="As good as your best." xml:space="preserve">
+    <value>Igual que tu mejor marca.</value>
+  </data>
+  <data name="%n error(s)#0" xml:space="preserve">
+    <value>%n error</value>
+  </data>
+  <data name="%n error(s)#1" xml:space="preserve">
+    <value>%n errores</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Expected" xml:space="preserve">
+    <value>Esperada</value>
+  </data>
+  <data name="Played" xml:space="preserve">
+    <value>Tocada</value>
+  </data>
+  <data name="Hand" xml:space="preserve">
+    <value>Mano</value>
+  </data>
+  <data name="The practices of %1" xml:space="preserve">
+    <value>Las prácticas de %1</value>
+  </data>
+  <data name="Song" xml:space="preserve">
+    <value>Canción</value>
+  </data>
+  <data name="Mode" xml:space="preserve">
+    <value>Modo</value>
+  </data>
+  <data name="Practices" xml:space="preserve">
+    <value>Prácticas</value>
+  </data>
+  <data name="Best" xml:space="preserve">
+    <value>Mejor</value>
+  </data>
+  <data name="Last practice" xml:space="preserve">
+    <value>Última práctica</value>
+  </data>
+  <data name="Practices of %1 (%2, %3)" xml:space="preserve">
+    <value>Prácticas de %1 (%2, %3)</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Fecha</value>
+  </data>
+  <data name="Speed" xml:space="preserve">
+    <value>Velocidad</value>
+  </data>
+  <data name="Score" xml:space="preserve">
+    <value>Puntuación</value>
+  </data>
+  <data name="Errors" xml:space="preserve">
+    <value>Errores</value>
+  </data>
+  <data name="%1 (best)" xml:space="preserve">
+    <value>%1 (mejor)</value>
+  </data>
 </root>

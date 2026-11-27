@@ -45,7 +45,7 @@ hecho" corto debajo de la fase.**
 | 1.3 | **hecha** (27 nov 2026) | `ProgressStore` (`progress.db`), `IProgressStore`. Rama `feature-1.3-progress-db` |
 | 1.4 | **hecha** (27 nov 2026) | `PracticeSession`, `ActiveProfile` (perfil por defecto de D13 adelantado, sin interfaz). Rama `feature-1.4-practice-session` |
 | 1.5 | **hecha** (27 nov 2026) | `ProfilesDialog`, botón del perfil en la `TopBar` y `Configuración → Perfiles...`. Rama `feature-1.5-profiles-ui` |
-| 1.6 | pendiente | Resultado al terminar y historial |
+| 1.6 | **hecha** (27 nov 2026) | `PracticeResultDialog`, `ProgressDialog` (`Canción → Historial de prácticas...`), `SaveFinished` con la mejor anterior. Rama `feature-1.6-results-ui` |
 | 1.7 | pendiente | Cierre: traducciones, README, paquete |
 
 ---
@@ -491,6 +491,66 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
   Nuevo `App/ProgressDialog.axaml(.cs)` (menú): prácticas del perfil activo por canción, modo y mano.
 - Más adelante (fuera de esta fase, anotar si se quiere): marcar en la partitura los compases con más
   errores; gráfica de evolución.
+
+**Lo hecho (27 nov 2026):**
+
+- **Decisiones (aceptadas por el usuario):**
+  - **Qué práctica se acaba de guardar:** `PracticeSession.SaveFinished()` ya no devuelve cuántas, sino
+    `List<SavedPractice>`: `SavedPractice(Practice, PreviousBest)`, con la práctica guardada (con su `Id` y
+    sus errores) y la mejor del mismo perfil, canción, modo y mano **leída antes de guardarla** (así no es
+    su propia mejor; null si es la primera). `IsNewBest` usa el orden de `BestPractice`, ahora también
+    en `PracticeRecord.IsBetterThan` (Core): un empate no es nueva mejor, la más antigua sigue siendo la mejor.
+    Si `SavePractice` falla (perfil borrado), no está en la lista.
+  - **«Repetir canción»:** con la casilla marcada **no se abre el diálogo** (pararía las repeticiones y
+    se quedaría el teclado); la práctica se guarda igual y está en el historial. Al cerrar la app
+    (`Shutdown`) se guarda sin diálogo. Sin repetir, el diálogo es modal y si hubiera varias se muestra la última.
+  - **Nombres de las notas:** `App/NoteText.cs`, `Name(pitch, keyOfC)`: `StavePos.MidiNote2Name` con
+    `Draw.NoteNames` (traducidos: Do, Re...), ♯/♭ según la armadura de la canción cargada (como los pinta
+    la partitura; las teclas blancas no cambian de nombre) y la octava científica (Do central = Do4, también
+    en español). Las notas guardadas ya son la tecla pulsada (con el transporte aplicado), que es lo que
+    muestra la partitura: se nombran tal cual. Una práctica de otra canción (desde el historial) se nombra
+    en Do (`keyOfC`: C♯, E♭, F♯, G♯, B♭). Sin nota (la tocada de una omitida): «—».
+  - **Historial:** solo el perfil activo, de consulta (no borra nada): arriba una fila por canción, modo y
+    mano (prácticas, la mejor, la última), la última practicada primero; abajo las prácticas de la fila
+    elegida, la más nueva primero, con la mejor en negrita y «(mejor)»; «Ver errores...» o doble clic abre
+    el resultado de esa práctica (sin la comparación).
+- `Core/ProgressTypes.cs`: `PracticeSummary(Song, Mode, Hand, Count, Best, LastEnded)`,
+  `IProgressStore.PracticeSummaries(profileId)`, `PracticeRecord.IsBetterThan` y `WithId`.
+  `Data/ProgressStore.cs`: `PracticeSummaries` (las prácticas del perfil agrupadas en memoria, `Best` sin
+  errores; vacío si no hay o con error, sin lanzar) y `Song(hash)` comparte la consulta con un `SongById` interno.
+- `App/PracticeResultDialog.axaml(.cs)`: canción; modo · mano · velocidad · fecha · duración; puntuación /
+  máxima real y porcentaje (redondeado hacia abajo: 100 % solo si es perfecta); la comparación («Mejor
+  anterior: 140 / 170 (82 %), el ...» y «¡Nueva mejor marca! N puntos porcentuales más.» / «N puntos
+  porcentuales por debajo de tu mejor marca.» / «Igual que tu mejor marca.», o «Es tu primera práctica de
+  esta canción en este modo y con esta mano.»); errores por tipo; la lista (compás como en la partitura,
+  `Bar + Bar.FirstBarNumber`; tiempo `Beat + 1`; tipo; esperada; tocada; y la mano solo con ambas manos),
+  por compás, tiempo y tick, o «Sin errores. ¡Muy bien!».
+- `App/ProgressDialog.axaml(.cs)` y `Canción → Historial de prácticas...` (`historyAct`, desactivado sin
+  `progress.db`, como «Perfiles...»). `App/PracticeText.cs`: los textos comunes (modo, mano, tipo,
+  puntuación, fecha `g` de la cultura del sistema, duración) y `SimpleTable` (cabecera + `ListBox` de
+  filas con columnas fijas, como la biblioteca).
+- `MainWindow`: `SongEventUpdated` abre el resultado (`ShowPracticeResult`, `async void` con `try/catch` y
+  `Log.Error`: no hay manejador global) y `OnShowProgressDialog`, también protegido.
+- `Strings.Tr` con 3 y 4 argumentos. 42 textos nuevos en `Strings.es.resx` (con los plurales de «%n
+  error(s)» y de los puntos porcentuales).
+- Pruebas: `PracticeSessionTests` (las de `SaveFinished` con la lista, y `TheSavedPracticeComesWithTheBestBeforeIt`:
+  primera, igual, mejor, peor y otra mano), `ProgressStoreTests` (`SummariesAreBySongModeAndHandOfOneProfile`
+  y sin base) y `TranslationTests` (`NoteNamesOfTheResults` con armaduras de bemoles y sostenidos, en Do y
+  en español; `TextsOfTheResults`). Las 72 de referencia, sin cambios; 0 avisos nuevos (solo el `CS0414` de siempre).
+- **Probado en la app** (`--settings=<scratchpad>\app\s.json` en español, sin salida MIDI,
+  `bc01-StartWithMiddleC.mid`, la `t` mandada solo con la app delante y ratón absoluto):
+  - Seguir entera: el resultado al terminar, «0 / 170 (0 %)», «Es tu primera práctica...», 55 errores por
+    tipo y la lista (Do4, «Der»/«Izq»);
+  - segunda y tercera en Seguir: «Mejor anterior: 0 / 170 (0 %), el ...» e «Igual que tu mejor marca.»
+    (con la `t` que se adelanta en la entrada, Seguir sale a 0, como en 1.4/1.5);
+  - parar con `P` en el compás 4: no se abre nada ni se guarda;
+  - Acompañar: «30 / 170 (17 %)» (primera en ese modo, omitidas con «—») y luego «170 / 170 (100 %)» con
+    «¡Nueva mejor marca! 83 puntos porcentuales más.»;
+  - con «Repetir canción»: la canción vuelve a empezar sin diálogo, y la práctica está en el historial;
+  - historial de gejoj: Acompaña (3, mejor 170/170) y Sigue (3); las prácticas con la mejor en negrita;
+    «Ver errores...» abre el resultado de una (sin comparación);
+  - nuevo perfil «Ana» activo: historial vacío («Todavía no hay prácticas...»); tras una práctica, solo la suya.
+  Los ajustes y bases reales (`%APPDATA%\PianoBooster`) no se han tocado.
 
 #### 1.7 Cierre (rama `feature-1.7-close`)
 

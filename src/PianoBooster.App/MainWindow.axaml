@@ -31,6 +31,9 @@
                   Click="OnShowSongDetailsDialog" />
         <MenuItem x:Name="sectionEditorAct" Header="Section _Editor..." InputGesture="Ctrl+E"
                   ToolTip.Tip="Create and change the sections of the song on a view of the whole song" Click="OnOpenSectionEditor" />
+        <Separator />
+        <MenuItem x:Name="historyAct" Header="Practice _History ..." IsEnabled="False"
+                  ToolTip.Tip="The practices of the whole songs of the active profile" Click="OnShowProgressDialog" />
       </MenuItem>
       <MenuItem x:Name="setupMenu" Header="Set_up">
         <MenuItem x:Name="setupMidiAct" Header="_MIDI Setup ..." InputGesture="Ctrl+S" ToolTip.Tip="Setup the MIDI input and output"

@@ -1,0 +1,62 @@
+<!-- Not in the C++ code: the history of the practices of the active profile (phase 1.6 of
+     FEATURES.md). GPLv3, like the rest of PianoBoosterCS. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.ProgressDialog"
+        Title="Practice History" Width="860" Height="600" MinWidth="560" MinHeight="380"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="ListBox.table ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="ListBox.table ListBoxItem:nth-child(2n)">
+      <Setter Property="Background" Value="#0C000000" />
+    </Style>
+    <Style Selector="Border.table">
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+    </Style>
+    <Style Selector="Border.header">
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="9">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                Margin="0,9,0,0">
+      <Button x:Name="errorsButton" Content="Show _Errors..." MinWidth="80" IsEnabled="False"
+              HorizontalContentAlignment="Center" ToolTip.Tip="Show the result of the chosen practice with its errors"
+              Click="OnErrorsButtonClicked" />
+      <Button x:Name="closeButton" Content="Close" MinWidth="80" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCloseButtonClicked" />
+    </StackPanel>
+
+    <TextBlock x:Name="profileText" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap" />
+    <TextBlock x:Name="emptyText" DockPanel.Dock="Top" TextWrapping="Wrap" IsVisible="False"
+               Text="There are no practices yet. The whole songs that you practise in Follow You or Play Along are saved here." />
+
+    <Grid x:Name="tables" RowDefinitions="Auto,*,6,Auto,*">
+      <TextBlock Grid.Row="0" Text="Songs" Margin="0,0,0,3" />
+      <Border Grid.Row="1" Classes="table">
+        <DockPanel>
+          <Border x:Name="summaryHeader" DockPanel.Dock="Top" Classes="header" />
+          <ListBox x:Name="summaryList" Classes="table" SelectionMode="Single" Padding="0" BorderThickness="0"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   SelectionChanged="OnSummaryListSelectionChanged" />
+        </DockPanel>
+      </Border>
+      <GridSplitter Grid.Row="2" ResizeDirection="Rows" Background="Transparent" />
+      <TextBlock x:Name="practicesText" Grid.Row="3" Margin="0,3,0,3" />
+      <Border Grid.Row="4" Classes="table">
+        <DockPanel>
+          <Border x:Name="practiceHeader" DockPanel.Dock="Top" Classes="header" />
+          <ListBox x:Name="practiceList" Classes="table" SelectionMode="Single" Padding="0" BorderThickness="0"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   SelectionChanged="OnPracticeListSelectionChanged" DoubleTapped="OnPracticeListDoubleTapped" />
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

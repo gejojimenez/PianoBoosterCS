@@ -190,27 +190,39 @@ public sealed class PracticeSession : IPerformanceObserver
     }
 
     /// <summary>Saves the whole practices that have ended (in the thread of the interface).
-    /// How many were saved.</summary>
-    public int SaveFinished()
+    /// The ones that were saved, in the order they were played, each with the best practice of
+    /// the same profile, song, mode and hand before it (phase 1.6).</summary>
+    public List<SavedPractice> SaveFinished()
     {
+        var saved = new List<SavedPractice>();
         List<PracticeRecord> finished;
         lock (_lock)
         {
             if (_finished.Count == 0)
-                return 0;
+                return saved;
             finished = new List<PracticeRecord>(_finished);
             _finished.Clear();
         }
-        int saved = 0;
         foreach (PracticeRecord practice in finished)
         {
+            // before saving it, so that it is not its own best
+            PracticeRecord? previousBest = _store.BestPractice(practice.ProfileId, practice.SongId,
+                practice.Mode, practice.Hand);
             long id = _store.SavePractice(practice);
             if (id >= 0)
             {
-                saved++;
+                saved.Add(new SavedPractice(practice.WithId(id), previousBest));
                 Log.Info($"Practice {id} saved: {practice.Score}/{practice.MaxScore}, {practice.ErrorCount} errors");
             }
         }
         return saved;
     }
+}
+
+/// <summary>A practice just saved (with its id and errors) and the best one of the same profile,
+/// song, mode and hand before it (null if it is the first one).</summary>
+public sealed record SavedPractice(PracticeRecord Practice, PracticeRecord? PreviousBest)
+{
+    /// <summary>Whether it is better than all the ones before it (also when it is the first one).</summary>
+    public bool IsNewBest => PreviousBest == null || Practice.IsBetterThan(PreviousBest);
 }
