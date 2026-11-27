@@ -30,12 +30,33 @@ public class ReferenceTests
 
     [Theory]
     [MemberData(nameof(Scenarios))]
-    public void SameAsTheCppCode(string name)
+    public void SameAsTheCppCode(string name) => Check(name, null);
+
+    public static IEnumerable<object[]> PlayScenarios() =>
+        Scenarios().Where(s => ModeOf((string)s[0]) == "play");
+
+    /// <summary>The performance observer only observes: with it the conductor does the same.</summary>
+    [Theory]
+    [MemberData(nameof(PlayScenarios))]
+    public void SameWithAPerformanceObserver(string name)
     {
-        string line = File.ReadAllLines(Path.Combine(DataDir, "scenarios.txt"))
+        var recorder = new EventRecorder();
+        Check(name, recorder);
+        Assert.NotEmpty(recorder.Events);
+        Assert.IsType<PlayingStarted>(recorder.Events[0]);
+    }
+
+    private static string ModeOf(string name) => ScenarioFields(name)[1];
+
+    private static string[] ScenarioFields(string name) =>
+        File.ReadAllLines(Path.Combine(DataDir, "scenarios.txt"))
             .Select(l => l.Trim())
-            .First(l => l.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() == name);
-        string[] fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            .First(l => l.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() == name)
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+
+    private static void Check(string name, IPerformanceObserver? observer)
+    {
+        string[] fields = ScenarioFields(name);
         string mode = fields[1];
         string midi = Path.Combine(DataDir, "midi", fields[2]).Replace('\\', '/');
         var parameters = new Dictionary<string, string>();
@@ -48,7 +69,7 @@ public class ReferenceTests
         string referenceFile = Path.Combine(DataDir, "reference", name + ".txt");
         Assert.True(File.Exists(referenceFile), $"No reference for {name}: run tools/RefDump/generate-references.ps1");
         string[] expected = File.ReadAllText(referenceFile).Split('\n');
-        string actualText = RefDriver.Run(mode, midi, parameters);
+        string actualText = RefDriver.Run(mode, midi, parameters, observer);
         string[] actual = actualText.Split('\n');
 
         int count = Math.Min(expected.Length, actual.Length);

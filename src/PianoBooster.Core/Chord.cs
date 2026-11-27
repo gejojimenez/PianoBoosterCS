@@ -133,6 +133,7 @@ public struct Chord
     public const int MaxChordNotes = 20; // The maximum notes in a chord well we only have 10 fingers
 
     private int _deltaTime;
+    private long _tick;
     private ChordNotes _notes;
     private int _length;
 
@@ -148,10 +149,15 @@ public struct Chord
     public readonly int Length => _length;
     public int DeltaTime { readonly get => _deltaTime; set => _deltaTime = value; }
 
+    /// <summary>When the first note of the chord starts, in ticks of the file from the start of
+    /// the song (not in the C++ code: used to know the bar and beat of the chord).</summary>
+    public long Tick { readonly get => _tick; set => _tick = value; }
+
     public void Clear()
     {
         _length = 0;
         _deltaTime = 0;
+        _tick = 0;
     }
 
     public void AddNote(WhichPart part, int note, int duration = 0)
@@ -269,6 +275,7 @@ public sealed class FindChord
     private Chord _completeChord;
     private int _cfgChordNoteGap;
     private int _cfgChordMaxLength;
+    private long _songTick;
 
     public FindChord()
     {
@@ -279,11 +286,16 @@ public sealed class FindChord
     {
         _noteGapTime = 0;
         _cordSpanGapTime = 0;
+        _songTick = 0;
         _completeChord.Clear();
         _currentChord.Clear();
         _cfgChordNoteGap = MidiFile.PpqnAdjust(Cfg.ChordNoteGap);
         _cfgChordMaxLength = MidiFile.PpqnAdjust(Cfg.ChordMaxLength);
     }
+
+    /// <summary>The time of the last event given to Find(), in ticks of the file from the start
+    /// of the song. Set it after Reset() when the events do not start at the start of the song.</summary>
+    public long SongTick { get => _songTick; set => _songTick = value; }
 
     public Chord GetChord()
     {
@@ -307,6 +319,7 @@ public sealed class FindChord
         }
 
         _noteGapTime += midi.DeltaTime;
+        _songTick += midi.DeltaTime;
 
         if ((_noteGapTime >= _cfgChordNoteGap || _cordSpanGapTime > _cfgChordMaxLength)
                 && _currentChord.Length > 0)
@@ -321,6 +334,8 @@ public sealed class FindChord
             WhichPart hand = Note.FindHand(midi, channel, part);
             if (hand != WhichPart.None)
             {
+                if (_currentChord.Length == 0)
+                    _currentChord.Tick = _songTick;
                 _currentChord.AddNote(hand, midi.Note);
                 _currentChord.DeltaTime = _noteGapTime + _currentChord.DeltaTime;
                 if (_currentChord.Length <= 1)

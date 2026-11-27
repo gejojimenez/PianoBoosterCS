@@ -33,20 +33,23 @@ internal sealed class RefDriver
     private Score _score = null!;
     private FakeMidiDevice _device = null!;
     private int _step;
+    private IPerformanceObserver? _observer;
 
     private RefDriver(Dictionary<string, string> parameters)
     {
         _params = parameters;
     }
 
-    /// <summary>Runs a mode of the dump on a MIDI file and returns the lines written.</summary>
-    public static string Run(string mode, string midiFile, Dictionary<string, string> parameters)
+    /// <summary>Runs a mode of the dump on a MIDI file and returns the lines written. The observer
+    /// (not in RefDump) is given to the song: what is written must not change with it.</summary>
+    public static string Run(string mode, string midiFile, Dictionary<string, string> parameters,
+        IPerformanceObserver? observer = null)
     {
         CultureInfo savedCulture = CultureInfo.CurrentCulture;
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture; // numbers written like printf()
         try
         {
-            var driver = new RefDriver(parameters);
+            var driver = new RefDriver(parameters) { _observer = observer };
             driver.RunMode(mode, midiFile);
             return driver._out.ToString();
         }
@@ -77,6 +80,7 @@ internal sealed class RefDriver
         else
         {
             SetupEnv();
+            _song.PerformanceObserver = _observer;
             LoadSong(file);
             if (mode == "info")
                 DumpInfo();

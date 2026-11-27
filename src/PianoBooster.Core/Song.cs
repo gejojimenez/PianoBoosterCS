@@ -144,6 +144,7 @@ public sealed class Song : Conductor
     {
         _wantedChordQueue.Clear();
         _findChord.Reset();
+        _findChord.SongTick = NextMidiEventTick; // the queue holds the events after it
 
         int length = _songEventQueue.Length;
 

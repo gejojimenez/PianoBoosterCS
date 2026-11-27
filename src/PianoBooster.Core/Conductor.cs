@@ -1,6 +1,7 @@
 ﻿// Ported from Conductor.h and Conductor.cpp of PianoBooster (C++). Copyright (c) 2008-2013, L. J. Barman. GPLv3.
 
 using System;
+using System.Collections.Generic;
 
 namespace PianoBooster.Core;
 
@@ -105,6 +106,14 @@ public class Conductor
     private int _latencyFix; // Try to fix the latency (put the time in msec, 0 disables it)
     private readonly int[] _track2ChannelLookUp = new int[Midi.MaxMidiTracks];
 
+    // Not in the C++ code: what is told to the PerformanceObserver
+    private long _nextMidiEventTick;          // when _nextMidiEvent is, in ticks of the file
+    private long _expectedChordCount;         // the chords asked for since the start
+    private ExpectedChord? _expectedChord;    // _wantedChord as told to the observer (made when needed)
+    private ExpectedChord? _previousExpectedChord;
+    private long _previousChordOffset;        // previous chord's delta time = _chordDeltaTime + this
+    private Chord _chordPlayedNotes = new();  // the notes of _wantedChord played (unlike _goodPlayedNotes, not removed when released)
+
     public bool CfgTimingMarkersFlag;
     public StopPointMode CfgStopPointMode;
     public RhythmTapping CfgRhythmTapping;
@@ -200,6 +209,15 @@ public class Conductor
     /// <summary>Called (in the thread of the conductor, with the lock) with each note pressed on
     /// the MIDI keyboard, before it is transposed: used to find the range of the keyboard.</summary>
     public Action<int>? MidiKeyboardNoteObserver { get; set; }
+
+    /// <summary>Told what the pianist plays (see <see cref="PerformanceEvent"/>), in the thread of
+    /// the conductor. Null (the default) tells nothing. It only observes: the conductor does
+    /// exactly the same with or without it.</summary>
+    public IPerformanceObserver? PerformanceObserver { get; set; }
+
+    /// <summary>When the next event to play is, in ticks of the file from the start of the song:
+    /// the events of the queue come after it.</summary>
+    protected long NextMidiEventTick => _nextMidiEventTick;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -558,6 +576,7 @@ public class Conductor
     public void PlayMusic(bool start)
     {
         ReconnectMidi();
+        bool wasPlaying = _playing;
         _playing = start;
         KeepDisplayOn.SetRequired(start); // don't let the display turn off while a song is playing
         AllSoundOff();
@@ -570,7 +589,146 @@ public class Conductor
             if (SeekingBarNumber())
                 ResetWantedChord();
         }
+
+        if (start)
+            Tell(new PlayingStarted(_bar.PlayFrom, _bar.IsLoopActive));
+        else if (wasPlaying)
+            Tell(new PlayingStopped(false));
     }
+
+    //////////////////////////////////////////////////////////////////////////
+    // What is told to the PerformanceObserver (not in the C++ code)
+
+    private bool Observed => PerformanceObserver != null;
+
+    private PlayZone Zone => new(_cfgPlayZoneEarly, _cfgPlayZoneLate);
+
+    private void Tell(PerformanceEvent performanceEvent)
+    {
+        IPerformanceObserver? observer = PerformanceObserver;
+        if (observer == null)
+            return;
+        try
+        {
+            observer.OnPerformanceEvent(performanceEvent);
+        }
+        catch (Exception e)
+        {
+            Log.Warn("The performance observer failed: " + e.Message);
+        }
+    }
+
+    private ExpectedChord MakeExpectedChord(in Chord chord, long id)
+    {
+        var notes = new ExpectedNote[chord.Length];
+        for (int i = 0; i < chord.Length; i++)
+            notes[i] = new ExpectedNote(chord.GetNote(i).Pitch + _transpose, chord.GetNote(i).Part);
+        BarPosition position = _bar.OffsetPosition(new BarPosition(), chord.Tick * Speed.AdjustFactor);
+        return new ExpectedChord(id, chord.Tick, position, notes);
+    }
+
+    // _wantedChord as told to the observer, null if there is none
+    private ExpectedChord? ExpectedWantedChord()
+    {
+        if (_expectedChord == null && _wantedChord.Length > 0)
+            _expectedChord = MakeExpectedChord(_wantedChord, ++_expectedChordCount);
+        return _expectedChord;
+    }
+
+    // A new chord is in _wantedChord (or none): popped is the time of the chords taken from the queue
+    private void ExpectedChordChanged(bool hadChord, long popped)
+    {
+        if (hadChord)
+        {
+            _previousExpectedChord = _expectedChord;
+            _previousChordOffset = popped;
+        }
+        else
+            _previousChordOffset += popped;
+        _expectedChord = null;
+        _chordPlayedNotes.Clear();
+
+        if (Observed && _wantedChord.Length > 0)
+            Tell(new ChordExpected(ExpectedWantedChord()!));
+    }
+
+    // The notes of the chord waited for that have not been played
+    private List<ExpectedNote> UnplayedNotes()
+    {
+        var notes = new List<ExpectedNote>();
+        for (int i = 0; i < _wantedChord.Length; i++)
+        {
+            Note note = _wantedChord.GetNote(i);
+            if (!_chordPlayedNotes.SearchChord(note.Pitch + _transpose))
+                notes.Add(new ExpectedNote(note.Pitch + _transpose, note.Part));
+        }
+        return notes;
+    }
+
+    private void TellMissedNotes(MissReason reason)
+    {
+        if (!Observed || _wantedChord.Length == 0)
+            return;
+        List<ExpectedNote> notes = UnplayedNotes();
+        if (notes.Count > 0)
+            Tell(new NotesMissed(ExpectedWantedChord()!, notes, reason));
+    }
+
+    private void TellGoodNote(int pitch)
+    {
+        if (!Observed)
+            return;
+        ExpectedChord chord = ExpectedWantedChord()!;
+        int index = chord.IndexOf(pitch);
+        ExpectedNote expected = index >= 0 ? chord.Notes[index] : new ExpectedNote(pitch, WhichPart.None);
+        Tell(new NotePlayed(pitch, expected, chord, _chordDeltaTime, _pianistTiming, Zone, _followPlayingTimeOut));
+    }
+
+    private void TellWrongNote(int pitch)
+    {
+        if (!Observed)
+            return;
+        ExpectedChord? chord = ExpectedWantedChord();
+
+        // The note that should have been played: of the chord waited for, else of the next one
+        ExpectedChord? nearestChord = chord;
+        bool played = true;
+        if (nearestChord == null)
+        {
+            for (int i = 0; i < _wantedChordQueue.Length; i++)
+            {
+                Chord next = _wantedChordQueue.Index(i); // a copy
+                if (next.TrimOutOfRangeNotes(_transpose) > 0)
+                {
+                    nearestChord = MakeExpectedChord(next, -1);
+                    played = false; // none of its notes has been played
+                    break;
+                }
+            }
+        }
+        int nearest = -1;
+        if (nearestChord != null)
+        {
+            // the nearest not played; if all have been played, the nearest of all
+            for (int pass = 0; pass < 2 && nearest < 0; pass++)
+            {
+                foreach (ExpectedNote note in nearestChord.Notes)
+                {
+                    if (pass == 0 && played && _chordPlayedNotes.SearchChord(note.Pitch))
+                        continue;
+                    if (nearest < 0 || System.Math.Abs(note.Pitch - pitch) < System.Math.Abs(nearest - pitch))
+                        nearest = note.Pitch;
+                }
+            }
+        }
+
+        Tell(new WrongNote(pitch, chord, _chordDeltaTime, Zone,
+            _chordDeltaTime <= -_cfgPlayZoneEarly, _wantedChord.SearchChord(pitch, _transpose),
+            nearest, nearest >= 0 ? nearestChord : null,
+            _previousExpectedChord, _chordDeltaTime + _previousChordOffset));
+    }
+
+    //////////////////////////////////////////////////////////////////////////
 
     // This will allow us to map midi tracks onto midi channels
     // tacks will eventually allow for more than the 16 midi channels (eg with two mid devices)
@@ -622,6 +780,10 @@ public class Conductor
     protected void ResetWantedChord()
     {
         _wantedChord.Clear();
+        _expectedChord = null;
+        _previousExpectedChord = null;
+        _previousChordOffset = 0;
+        _chordPlayedNotes.Clear();
 
         _followPlayingTimeOut = false;
         _chordDeltaTime = _playingDeltaTime;
@@ -708,24 +870,29 @@ public class Conductor
         OutputSavedNotes();
         TurnOnKeyboardLights(false);
 
+        bool hadChord = _wantedChord.Length > 0;
+        long popped = 0;
         do // Remove notes or chords that are out of our range
         {
             if (_wantedChordQueue.Length == 0)
             {
                 _wantedChord.Clear();
                 _pianistSplitPoint = Midi.MiddleC;
+                ExpectedChordChanged(hadChord, popped);
                 return;
             }
 
             _wantedChord = _wantedChordQueue.Pop();
             _savedWantedChord = _wantedChord;
             _chordDeltaTime -= _wantedChord.DeltaTime * Speed.AdjustFactor;
+            popped += _wantedChord.DeltaTime * Speed.AdjustFactor;
             _pianistTiming = _chordDeltaTime;
         }
         while (_wantedChord.TrimOutOfRangeNotes(_transpose) == 0);
 
         // now find the split point
         FindSplitPoint();
+        ExpectedChordChanged(hadChord, popped);
     }
 
     private bool ValidatePianistNote(in MidiEvent inputNote)
@@ -817,6 +984,8 @@ public class Conductor
     private void PlayGoodNote(WhichPart hand, in MidiEvent inputNote)
     {
         _goodPlayedNotes.AddNote(hand, inputNote.Note);
+        _chordPlayedNotes.AddNote(hand, inputNote.Note);
+        TellGoodNote(inputNote.Note);
         _piano!.AddPianistNote(hand, inputNote, true);
         long pianistTiming;
         if ((CfgTimingMarkersFlag && _followSkillAdvanced) || s_playMode == PlayMode.RhythmTapping)
@@ -832,6 +1001,11 @@ public class Conductor
             if (_chordDeltaTime < 0)
                 _tempo.RemovePlayingTicks(-_chordDeltaTime);
 
+            if (Observed)
+            {
+                TellMissedNotes(MissReason.NotNeeded);
+                Tell(new ChordAccepted(ExpectedWantedChord()!, _chordDeltaTime));
+            }
             _goodPlayedNotes.Clear();
             FetchNextChord();
             // count the good notes so that the live percentage looks OK
@@ -872,6 +1046,7 @@ public class Conductor
 
                     _piano!.AddPianistNote(hand, inputNote, false);
                     _rating.WrongNotes(1);
+                    TellWrongNote(inputNote.Note);
 
                     if (_settings!.FollowThroughErrors && s_playMode == PlayMode.FollowYou) // If the setting is checked, errors cause following too
                     {
@@ -887,6 +1062,7 @@ public class Conductor
                             MissedNotesColor(Cfg.PianoBadColor);
                             _rating.LateNotes(_wantedChord.Length - _goodPlayedNotes.Length);
                             SetEventBits(EventBits.ForceRatingRedraw);
+                            TellMissedNotes(MissReason.SkippedByWrongNote);
                             FetchNextChord(); // Skip through the wrong note and continue to the next
 
                             // Was the next note the one keyed by accident (dyslexia)?  If so, validate it instead and continue as usual.
@@ -1003,6 +1179,7 @@ public class Conductor
             if (_chordDeltaTime > _cfgPlayZoneLate)
             {
                 MissedNotesColor(Cfg.PlayedStoppedColor);
+                TellMissedNotes(MissReason.Skipped);
                 FetchNextChord();
                 _rating.LateNotes(_wantedChord.Length - _goodPlayedNotes.Length);
                 SetEventBits(EventBits.ForceRatingRedraw);
@@ -1104,6 +1281,7 @@ public class Conductor
                     _tempo.ClearPlayingTicks();
                     _rating.LateNotes(_wantedChord.Length - _goodPlayedNotes.Length);
                     SetEventBits(EventBits.ForceRatingRedraw);
+                    TellMissedNotes(MissReason.Late);
 
                     MissedNotesColor(Cfg.PlayedStoppedColor);
                     FindImminentNotesOff();
@@ -1145,6 +1323,7 @@ public class Conductor
                 SetEventBits(EventBits.PlayingStopped);
                 _playing = false;
                 KeepDisplayOn.SetRequired(false);
+                Tell(new PlayingStopped(true));
                 break;
             }
 
@@ -1190,7 +1369,10 @@ public class Conductor
                 }
             }
             if (_songEventQueue.Length > 0)
+            {
                 _nextMidiEvent = _songEventQueue.Pop();
+                _nextMidiEventTick += _nextMidiEvent.DeltaTime;
+            }
             else
             {
                 _nextMidiEvent.Clear();
@@ -1216,6 +1398,8 @@ public class Conductor
         _savedNoteOffQueue.Clear();
         _wantedChordQueue.Clear();
         _nextMidiEvent.Clear();
+        _nextMidiEventTick = 0;
+        _expectedChordCount = 0;
         _bar.Rewind();
 
         _goodPlayedNotes.Clear(); // The good notes the pianist plays
