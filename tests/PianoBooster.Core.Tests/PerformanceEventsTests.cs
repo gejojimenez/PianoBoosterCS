@@ -35,7 +35,7 @@ internal sealed class PerformanceDriver
     public bool Ended { get; private set; }
 
     public PerformanceDriver(string midiName, PlayMode mode, WhichPart hand = WhichPart.Both, int skill = 3,
-        bool followThroughErrors = false, bool observe = true)
+        bool followThroughErrors = false, bool observe = true, IPerformanceObserver? alsoTell = null)
     {
         CoreStatics.Reset();
         Cfg.SetDefaults();
@@ -64,7 +64,7 @@ internal sealed class PerformanceDriver
         Song.SetActiveHand(hand);
         Song.SetSkill(skill);
         if (observe)
-            Song.PerformanceObserver = Recorder;
+            Song.PerformanceObserver = alsoTell == null ? Recorder : new Observers(Recorder, alsoTell);
         Song.SetPlayFromBar(0.0);
         Song.SetPlayUptoBar(0.0);
         Song.PlayFromStartBar();
@@ -483,5 +483,19 @@ public class PerformanceEventsTests
                 trace.Add($"{driver.Song.WantedChord.Length} {driver.Song.ChordDeltaTime} {driver.Song.Rating.WrongNoteCount} {driver.Song.Rating.LateNoteCount}");
             }
         }
+    }
+}
+
+/// <summary>Tells the events to two observers.</summary>
+internal sealed class Observers : IPerformanceObserver
+{
+    private readonly IPerformanceObserver _first, _second;
+
+    public Observers(IPerformanceObserver first, IPerformanceObserver second) => (_first, _second) = (first, second);
+
+    public void OnPerformanceEvent(PerformanceEvent performanceEvent)
+    {
+        _first.OnPerformanceEvent(performanceEvent);
+        _second.OnPerformanceEvent(performanceEvent);
     }
 }

@@ -125,6 +125,10 @@ public sealed class MidiFile : Merge
 
     internal static void ResetStatics() => s_ppqn = DefaultPpqn;
 
+    // Not in the C++ code: puts back the pulses per quarter note of the song after another file
+    // has been read (SongMaxScore reads the song again).
+    internal static void RestorePulsesPerQuarterNote(int ppqn) => s_ppqn = ppqn;
+
     /// <summary>
     /// Opens and reads a MIDI file. The C++ code shows a message box if it can't be read;
     /// here <see cref="MidiError"/> tells it (CannotOpenFile or another error).

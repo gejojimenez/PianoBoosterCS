@@ -41,7 +41,7 @@ hecho" corto debajo de la fase.**
 |---|---|---|
 | 1.0 | **hecha** (27 nov 2026) | Decisiones D1–D13 y D2b aceptadas. Ver §4.3 |
 | 1.1 | **hecha** (27 nov 2026) | Eventos de interpretación en el `Conductor`. Rama `feature-1.1-performance-events` |
-| 1.2 | pendiente | Reglas de puntuación y puntuación máxima |
+| 1.2 | **hecha** (27 nov 2026) | `PracticeScorer`, `SongMaxScore`, `ScoringRules`. Rama `feature-1.2-scorer` |
 | 1.3 | pendiente | Base de datos de progreso |
 | 1.4 | pendiente | Sesión de práctica en la app (canción entera → registro) |
 | 1.5 | pendiente | Interfaz de perfiles |
@@ -267,6 +267,50 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
 - `SongMaxScore`: notas por mano → máxima derecha, izquierda y ambas (suma).
 - **Pruebas** (unitarias, sin MIDI): cada regla de §4.1 con su caso (acordes parciales, mínimo 0,
   media puntuación, tiempo saltado, máxima de ambas = suma) y una de extremo a extremo con `RefDriver`.
+
+**Lo hecho (27 nov 2026):**
+
+- `Core/ScoringRules.cs`: las constantes de D1 (`NoteValue` 10; Seguir: equivocada −10, adelanto/retraso
+  −5, omitida −10; Acompañar: a tiempo +10, adelanto/retraso +5, omitida y equivocada +0) y
+  `ToleranceWindowZones` = 1 (ventanas de D2b del mismo ancho que la zona).
+- `Core/PracticeScorer.cs`: `PracticeScorer : IPerformanceObserver` (solo `FollowYou`/`PlayAlong`, D10;
+  otro modo lanza `ArgumentException`). Lleva el estado de cada nota de cada acorde (pendiente, a tiempo,
+  adelanto, retraso, omitida), así los errores se cuentan por nota. `PlayingStarted` empieza de cero;
+  `PlayingStopped` deja `ReachedEnd`. `Result` (desde cualquier hilo, con lock) da un `PracticeResult`:
+  `Score`, `MaxScore`, `NotesExpected`, `Errors` (`PracticeError(Bar, Beat, Tick, Kind, ExpectedNote,
+  PlayedNote, Hand)`, `Kind` = `Early`/`Late`/`Wrong`/`Missed`), `StartedFrom`, `LoopActive`,
+  `ReachedEnd`, `CountOf(kind)`, `Percent`. Reglas:
+  - `MaxScore` = 10 × notas de los `ChordExpected` recibidos: al llegar al final es la máxima **real**
+    (D11). Seguir: `Score = max(0, MaxScore − descuentos)` (lo mismo que empezar en la máxima y restar).
+    Acompañar: suma de puntos.
+  - `WrongNote` con `BeforeZone && InChord` en la ventana anterior → adelanto. En Seguir cada pulsación
+    temprana es un error (−5); en Acompañar cuenta una vez (+5) y si luego llega su `NotePlayed` sube a
+    +10 y el error de adelanto **se quita** ("se queda la mejor").
+  - Acompañar: `WrongNote` de una nota omitida de `PreviousChord` con `PreviousDeltaTime` en la ventana
+    posterior → el error de omitida pasa a retraso con la nota tocada (+5). Solo el acorde anterior.
+  - Resto de `WrongNote` → equivocada, en el compás/tiempo de `NearestChord` (o `Chord`, o
+    `PreviousChord`; si no hay ninguno, 0/0), con `NearestExpected` como nota esperada (D6).
+  - `NotesMissed(Late)` (Seguir) → un retraso por nota sin `PlayedNote`; cuando luego llega su
+    `NotePlayed` con `AfterTimeOut` se rellena `PlayedNote`. `Skipped`, `SkippedByWrongNote` y
+    `NotNeeded` → omitidas (D4, D5). En Acompañar una nota ya dada por adelanto no pasa a omitida.
+  - En Seguir una nota que se tocó antes de tiempo y luego no se toca puede tener dos errores
+    (adelanto y luego retraso u omitida): "varios errores mientras no se pulse la nota correcta".
+- `Core/SongMaxScore.cs`: `SongMaxScore(NotesRight, NotesLeft)` con `MaxRight`, `MaxLeft`, `MaxBoth`
+  (suma), `MaxFor(hand)`/`NotesFor(hand)`. `FromChords(chords)` cuenta por `Note.Part`;
+  `FromMidiFile(path, activeChannel)` lee el fichero con un `MidiFile` y un `FindChord` nuevos (los
+  mismos acordes que la cola del `Conductor`, máxima **nominal**, sin recortar por teclado ni mano) y
+  devuelve null si no se puede leer. Usa las manos de los estáticos de `Note` de la canción cargada:
+  **en 1.4, llamarlo después de `LoadSong` y con el lock de la canción** (`MidiFile` cambia un instante
+  el ppqn estático; se restaura con el nuevo `MidiFile.RestorePulsesPerQuarterNote`, interno).
+- Pruebas: `PracticeScorerTests` (eventos hechos a mano: máxima a tiempo en los dos modos, 1/2/3 notas
+  mal en un acorde, mínimo 0, adelanto dentro/fuera de la ventana, retraso en Seguir con la nota tocada
+  después, `_skill < 3`, `FollowThroughErrors`, media puntuación y "la mejor" en Acompañar, tiempo
+  saltado y acorde parcial, retraso de un acorde saltado dentro/fuera de la ventana, equivocadas que no
+  restan, nota entre acordes, varios errores en el mismo compás/tiempo, reinicio, máxima de ambas =
+  suma, fichero que no existe) y `PracticeScorerSongTests` con el `PerformanceDriver` de 1.1 (que ahora
+  acepta un segundo observador, `alsoTell`): canción entera a tiempo = máxima de `SongMaxScore` para
+  ambas manos, derecha e izquierda, 2 notas mal, tiempo saltado, acorde tarde, y que leer la máxima no
+  cambia el ppqn. Las 72 de referencia, sin cambios.
 
 #### 1.3 Base de datos de progreso (rama `feature-1.3-progress-db`, independiente de 1.1/1.2 salvo los tipos)
 
