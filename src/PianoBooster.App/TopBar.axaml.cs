@@ -47,11 +47,28 @@ public partial class TopBar : UserControl
         majorCombo.Items[1] = Strings.Tr("Minor");
         majorCombo.SelectedIndex = index;
         _updating--;
+        if (profileText.Text is { Length: > 0 })
+            SetProfileName(_profileName);
 
         // in C++ retranslateUi() puts back the text of the .ui file in the button, until the next change
         if (_song != null)
             UpdateSectionSummary();
     }
+
+    /// <summary>The profile button was clicked (not in the C++: phase 1.5 of FEATURES.md).</summary>
+    public event Action? ProfilesRequested;
+
+    private string? _profileName;
+
+    /// <summary>Shows the active profile; null: none (no progress.db), the button is disabled.</summary>
+    public void SetProfileName(string? name)
+    {
+        _profileName = name;
+        profileButton.IsEnabled = name != null;
+        profileText.Text = name != null ? Strings.Tr("Profile: %1", name) : Strings.Tr("No profile");
+    }
+
+    private void OnProfileButtonClicked(object? sender, RoutedEventArgs e) => ProfilesRequested?.Invoke();
 
     private static Bitmap LoadIcon(string name) =>
         new(AssetLoader.Open(new Uri("avares://PianoBoosterCS/images/" + name)));

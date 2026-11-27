@@ -1,5 +1,5 @@
-// Not in the C++ code: the profile whose practices are saved (D13 of FEATURES.md, without its
-// interface, which is phase 1.5). GPLv3, like the rest of PianoBoosterCS.
+// Not in the C++ code: the profile whose practices are saved (D13 of FEATURES.md) and the
+// deletion of a profile used by ProfilesDialog (phase 1.5). GPLv3, like the rest of PianoBoosterCS.
 
 using System;
 using System.Globalization;
@@ -42,6 +42,30 @@ public static class ActiveProfile
     /// <summary>Makes a profile the active one.</summary>
     public static void Set(SettingsStore settings, long id) =>
         settings.SetValue(SettingsKey, id.ToString(CultureInfo.InvariantCulture));
+
+    /// <summary>
+    /// Deletes a profile with its practices (the profiles dialog, phase 1.5), but never the last
+    /// one, so that there is always an active profile. If it was the active one, the first profile
+    /// that is left (by name, as <see cref="Resolve"/>) becomes the active one. False if it was not
+    /// deleted. active: the active profile afterwards.
+    /// </summary>
+    public static bool Delete(IProgressStore store, SettingsStore settings, long id, long activeId, out long active)
+    {
+        active = activeId;
+        var profiles = store.Profiles();
+        if (profiles.Count < 2 || !profiles.Exists(p => p.Id == id))
+            return false;
+        store.DeleteProfile(id);
+        if (store.Profile(id) != null)
+            return false; // the store could not delete it (logged)
+        if (id == activeId)
+        {
+            active = store.Profiles() is { Count: > 0 } left ? left[0].Id : -1;
+            if (active >= 0)
+                Set(settings, active);
+        }
+        return true;
+    }
 
     /// <summary>The name of the default profile: the name of the account, or the fallback.</summary>
     public static string DefaultName(string fallback)

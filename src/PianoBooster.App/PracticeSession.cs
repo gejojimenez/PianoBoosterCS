@@ -174,7 +174,9 @@ public sealed class PracticeSession : IPerformanceObserver
     private bool StillWhole(PerformanceEvent performanceEvent)
     {
         Practice practice = _practice!;
-        if (_songId != practice.SongId || _state.Mode != practice.Mode || _state.Hand != practice.Hand
+        // a change of profile too: the practice is not saved for the new one (phase 1.5)
+        if (_profileId != practice.ProfileId || _songId != practice.SongId
+            || _state.Mode != practice.Mode || _state.Hand != practice.Hand
             || _state.Speed != practice.Speed || _state.ActiveChannel != practice.ActiveChannel
             || _state.LoopActive || !_state.PlayFrom.IsSongStart)
             return false;

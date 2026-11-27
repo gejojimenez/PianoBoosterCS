@@ -1518,4 +1518,103 @@ Los archivos no se borran, y las canciones conservan sus favoritas y estadístic
   <data name="User" xml:space="preserve">
     <value>Usuario</value>
   </data>
+  <data name="OK" xml:space="preserve">
+    <value>Aceptar</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Sí</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Profiles" xml:space="preserve">
+    <value>Perfiles</value>
+  </data>
+  <data name="Pro&amp;files ..." xml:space="preserve">
+    <value>Per&amp;files ...</value>
+  </data>
+  <data name="Create, rename, delete and choose the user profiles" xml:space="preserve">
+    <value>Crear, renombrar, borrar y elegir los perfiles de usuario</value>
+  </data>
+  <data name="The whole songs that you practise are saved for the active profile." xml:space="preserve">
+    <value>Las canciones enteras que practiques se guardan en el perfil activo.</value>
+  </data>
+  <data name="&amp;Use This Profile" xml:space="preserve">
+    <value>&amp;Usar este perfil</value>
+  </data>
+  <data name="Make the chosen profile the active one" xml:space="preserve">
+    <value>Hacer activo el perfil elegido</value>
+  </data>
+  <data name="&amp;New..." xml:space="preserve">
+    <value>&amp;Nuevo...</value>
+  </data>
+  <data name="Create a new profile" xml:space="preserve">
+    <value>Crear un perfil nuevo</value>
+  </data>
+  <data name="&amp;Rename..." xml:space="preserve">
+    <value>&amp;Renombrar...</value>
+  </data>
+  <data name="Rename the chosen profile" xml:space="preserve">
+    <value>Renombrar el perfil elegido</value>
+  </data>
+  <data name="&amp;Delete..." xml:space="preserve">
+    <value>&amp;Borrar...</value>
+  </data>
+  <data name="Delete the chosen profile and all its practices" xml:space="preserve">
+    <value>Borrar el perfil elegido y todas sus prácticas</value>
+  </data>
+  <data name="The last profile cannot be deleted" xml:space="preserve">
+    <value>No se puede borrar el último perfil</value>
+  </data>
+  <data name="%1 (active)" xml:space="preserve">
+    <value>%1 (activo)</value>
+  </data>
+  <data name="Name of the profile:" xml:space="preserve">
+    <value>Nombre del perfil:</value>
+  </data>
+  <data name="The name of the profile cannot be empty." xml:space="preserve">
+    <value>El nombre del perfil no puede estar vacío.</value>
+  </data>
+  <data name="There is already a profile called &quot;%1&quot;." xml:space="preserve">
+    <value>Ya hay un perfil que se llama «%1».</value>
+  </data>
+  <data name="New Profile" xml:space="preserve">
+    <value>Perfil nuevo</value>
+  </data>
+  <data name="Rename Profile" xml:space="preserve">
+    <value>Renombrar perfil</value>
+  </data>
+  <data name="Delete Profile" xml:space="preserve">
+    <value>Borrar perfil</value>
+  </data>
+  <data name="Delete the profile &quot;%1&quot;?" xml:space="preserve">
+    <value>¿Borrar el perfil «%1»?</value>
+  </data>
+  <data name="Its %n practice(s) will be deleted too.#0" xml:space="preserve">
+    <value>También se borrará su práctica.</value>
+  </data>
+  <data name="Its %n practice(s) will be deleted too.#1" xml:space="preserve">
+    <value>También se borrarán sus %n prácticas.</value>
+  </data>
+  <data name="It has no practices." xml:space="preserve">
+    <value>No tiene prácticas.</value>
+  </data>
+  <data name="This cannot be undone." xml:space="preserve">
+    <value>No se puede deshacer.</value>
+  </data>
+  <data name="The profile &quot;%1&quot; could not be deleted." xml:space="preserve">
+    <value>No se ha podido borrar el perfil «%1».</value>
+  </data>
+  <data name="The profile whose practices are saved: click to change it" xml:space="preserve">
+    <value>El perfil en el que se guardan las prácticas: pulsa para cambiarlo</value>
+  </data>
+  <data name="Profile: %1" xml:space="preserve">
+    <value>Perfil: %1</value>
+  </data>
+  <data name="No profile" xml:space="preserve">
+    <value>Sin perfil</value>
+  </data>
 </root>

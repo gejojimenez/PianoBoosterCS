@@ -245,8 +245,13 @@ public sealed class ProgressStoreTests : IDisposable
         store.SavePractice(Practice(ana, song, mode: PlayMode.PlayAlong));
         long beaPractice = store.SavePractice(Practice(bea, song));
         Assert.Equal(15L, Scalar("SELECT COUNT(*) FROM practice_errors"));
+        Assert.Equal(2, store.PracticeCount(ana));
+        Assert.Equal(1, store.PracticeCount(bea));
 
         store.DeleteProfile(ana);
+
+        Assert.Equal(0, store.PracticeCount(ana));
+        Assert.Equal(1, store.PracticeCount(bea));
 
         Assert.Equal(1L, Scalar("SELECT COUNT(*) FROM practices"));
         Assert.Equal(5L, Scalar("SELECT COUNT(*) FROM practice_errors"));
@@ -336,6 +341,7 @@ public sealed class ProgressStoreTests : IDisposable
         Assert.Equal(-1, store.CreateProfile("Ana"));
         Assert.False(store.RenameProfile(1, "Bea"));
         store.DeleteProfile(1);
+        Assert.Equal(0, store.PracticeCount(1));
         Assert.Null(store.GetOrCreateSong("abc123", "C:/music/song.mid", "Song"));
         store.SetSongMaxScore(1, new SongMaxScore(1, 1));
         Assert.Equal(-1, store.SavePractice(Practice(1, 1)));

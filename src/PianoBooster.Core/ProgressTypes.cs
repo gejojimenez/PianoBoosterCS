@@ -87,6 +87,8 @@ public interface IProgressStore
     bool RenameProfile(long id, string name);
     /// <summary>Deletes a profile and all its practices.</summary>
     void DeleteProfile(long id);
+    /// <summary>How many practices a profile has (0 if none, or on error).</summary>
+    int PracticeCount(long profileId);
 
     // ---- songs ----
 

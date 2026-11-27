@@ -284,6 +284,22 @@ public sealed class ProgressStore : IProgressStore, IDisposable
         }
     }
 
+    public int PracticeCount(long profileId)
+    {
+        if (_db == null)
+            return 0;
+        try
+        {
+            using SqliteCommand command = Command("SELECT COUNT(*) FROM practices WHERE profile_id = ?", profileId);
+            return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+        catch (SqliteException e)
+        {
+            LogError(e);
+            return 0;
+        }
+    }
+
     // ---- songs ----
 
     public ProgressSong? Song(string hash)
