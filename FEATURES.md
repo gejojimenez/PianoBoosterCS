@@ -46,7 +46,7 @@ hecho" corto debajo de la fase.**
 | 1.4 | **hecha** (27 nov 2026) | `PracticeSession`, `ActiveProfile` (perfil por defecto de D13 adelantado, sin interfaz). Rama `feature-1.4-practice-session` |
 | 1.5 | **hecha** (27 nov 2026) | `ProfilesDialog`, botón del perfil en la `TopBar` y `Configuración → Perfiles...`. Rama `feature-1.5-profiles-ui` |
 | 1.6 | **hecha** (27 nov 2026) | `PracticeResultDialog`, `ProgressDialog` (`Canción → Historial de prácticas...`), `SaveFinished` con la mejor anterior. Rama `feature-1.6-results-ui` |
-| 1.7 | pendiente | Cierre: traducciones, README, paquete |
+| 1.7 | **hecha** (27 nov 2026) | Cierre: prueba de textos sin traducir, README, CHANGELOG, versión **1.5.0**, paquete probado. Rama `feature-1.7-close`. **Característica 1 terminada** |
 
 ---
 
@@ -558,3 +558,36 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
   perfil, qué cuenta como práctica entera), `CHANGELOG.md` y versión en `Directory.Build.props`;
   comprobar que `tools/package-windows.ps1` sigue funcionando (no hay ficheros nuevos que copiar:
   `progress.db` se crea en la carpeta de ajustes).
+
+**Lo hecho (27 nov 2026):**
+
+- **Textos:** todos los de 1.4–1.6 ya estaban en `Strings.es.resx`, que no cambia. Nueva prueba
+  `TranslationTests.EveryTextAfterThePortIsInSpanish`: lee los ficheros nuevos de la app
+  (`s_filesAfterThePort`: `ActiveProfile`, `NoteText`, `PracticeSession`, `PracticeText` y los tres
+  diálogos con su `.axaml`) y comprueba que cada `Strings.Tr` / `TrPlural` (formas `#0` y `#1`) /
+  `Translate` y cada texto de los `.axaml` que traduce `TranslateTree` (`Title`, `Content`, `Header`,
+  `Text`, `PlaceholderText`, `ToolTip.Tip`, con la tecla de acceso pasada a `&` de Qt) tiene su clave en
+  el .resx. En esos ficheros el texto tiene que ir escrito tal cual en la llamada (una variable o `"a" + "b"`
+  hacen fallar la prueba: no se podrían comprobar). Los textos añadidos a ficheros del port (menús,
+  botón de la `TopBar`, «User», OK/Cancel/Yes/No) van en `s_textsAddedToThePort`, que avisa si alguno
+  desaparece. Los formatos sin palabras (`%1 / %2 (%3 %)`) no se exigen. **Un fichero nuevo de la
+  interfaz se añade a `s_filesAfterThePort`.** `TheScanOfTheTexts` prueba la lectura (escapes, llamadas
+  en varias líneas, XAML, tecla de acceso, enlaces `{...}` ignorados). Comprobado que falla con un texto
+  sin traducir.
+- **README.md** (en inglés): sección «Profiles and practice scores» (perfiles, práctica entera, tabla
+  de puntuación por modo con zona y ventana de D2/D2b, máxima nominal y real de D11, resultado,
+  historial y dónde está `progress.db`), fila 7 del Roadmap, `PianoBooster.Data` en la estructura, y el
+  aviso de «work in progress» del principio actualizado (estaba desfasado desde la fase 5). En la app
+  `_skill` siempre es 3, así que la omitida en Seguir solo sale con «Follow Through Errors».
+- **CHANGELOG.md** con la 1.5.0 y `<Version>1.5.0</Version>` en `Directory.Build.props` (aceptado por
+  el usuario). Sin tag (el de `v1.4.0` existe; crear `v1.5.0` si se quiere al publicar).
+- **Paquete:** `tools/package-windows.ps1` sin cambios da `artifacts/package/PianoBoosterCS-1.5.0-win64.zip`
+  (185 MB; el aviso de que el SoundFont FluidR3_GM dice «DO NOT REDISTRIBUTE» es el de siempre). El zip
+  descomprimido en el scratchpad arranca con `--settings=<scratchpad>\s.json --Xquit-after` y sale con
+  código 0: título «PianoBoosterCS 1.5.0», en español, «Perfil: gejoj» activo, y `progress.db` (perfil 1,
+  `Profile/active` = 1) y `library.db` creados junto a `s.json`. Ojo al probar el paquete: en el primer
+  arranque sin `FluidSynth/SoundFont` ni `LastSoundFontDir`, `SetupDefaultSoundFont` elige el SoundFont
+  del paquete y pone `Midi/Output` = FluidSynth aunque esté vacío; para probar sin sonido, poner
+  `"LastSoundFontDir": ""` en el `s.json`. En Windows no se descomprime la música (solo se guarda la ruta).
+- Las 72 de referencia sin cambios (88 en `ReferenceTests` con las 16 de `SameWithAPerformanceObserver`);
+  0 avisos nuevos (solo el `CS0414` de siempre). `%APPDATA%\PianoBooster` sin tocar.

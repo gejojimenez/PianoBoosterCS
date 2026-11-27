@@ -7,9 +7,10 @@ PianoBooster is a MIDI file player that helps you learn to play the piano: it sh
 music on a scrolling score, waits for you to play the right notes on a MIDI keyboard, and
 tells you how well you played them.
 
-> **Status: work in progress.** The musical core, MIDI input/output with sound (FluidSynth),
-> the scrolling score and the main window (side panel, top bar, menus, settings) are ported.
-> The song library, the section editor and most dialogs are not yet. See [Roadmap](#roadmap).
+> **Status:** the port is complete (the musical core, MIDI and sound, the scrolling score, the
+> main window, the song library, the section editor, the dialogs, the translations and the
+> Windows package), and the first new feature, [profiles and practice scores](#profiles-and-practice-scores),
+> is done. See [Roadmap](#roadmap).
 
 ## Where it comes from
 
@@ -41,6 +42,87 @@ smoother scrolling. The port keeps all of them.
 The full plan, the decisions and the state of each phase are in [PORTING.md](PORTING.md)
 (in Spanish).
 
+## Profiles and practice scores
+
+A feature of PianoBoosterCS that PianoBooster does not have. The plan and the decisions behind
+it are in [FEATURES.md](FEATURES.md) (in Spanish).
+
+### Profiles
+
+A profile is a person who practises: each profile keeps its own practices and results. The
+first time the program starts, it creates one with the name of the Windows account and makes it
+the active one. The button **Profile: &lt;name&gt;** on the right of the top bar, or
+**Setup → Profiles...**, opens the list of profiles, where you can create, rename, delete and
+choose the active one. The active profile is remembered when the program is closed.
+
+- Deleting a profile also deletes all its practices (it asks first). The last profile cannot be
+  deleted, so there is always an active one.
+- Changing the profile in the middle of a song discards that practice: it is saved neither for
+  the old profile nor for the new one.
+
+### What counts as a whole practice
+
+Only whole songs are saved, not pieces of them. A practice is saved when all of this is true:
+
+- the mode is **Follow You** or **Play Along** (Listen and Rhythm Tap are never saved);
+- it starts at the **beginning of the song**: not in a section, not with a loop (start / repeat
+  bars), not "play from bar N", and not resuming after a pause in the middle;
+- nothing changes while playing: not the **mode**, the **hand**, the **speed**, the
+  **instrument** (the part you play) or the **profile**;
+- it gets to the **end of the song**. Stopping it, changing the song or closing the program
+  saves nothing.
+
+The speed is saved with the practice, but it does not change the score.
+
+### How it is scored
+
+Each note you have to play is worth **10 points**, and errors are counted **per note**, not per
+chord: in a chord of three notes, one wrong note is one error and three wrong notes are three.
+
+A note is **on time** if it is played inside the play zone of the program (about a quarter of a
+beat before or after the note, scaled with the speed). Just outside the zone there is a window
+of the same width on each side: a right note played there is **early** (before) or **late**
+(after). A note played further away, or a note that is not in the chord, is a **wrong note**. A
+note never played is **missed**.
+
+| | Follow You | Play Along |
+|---|---|---|
+| Starts at | the maximum | 0 |
+| On time | (keeps its 10 points) | +10 |
+| Early or late | −5 | +5 (an early note played again on time gets +10) |
+| Wrong note | −10 | +0 (saved as an error, but not taken off) |
+| Missed | −10 (only with "Follow Through Errors" of the preferences, which skips chords) | +0 (the music does not wait: a beat not played misses all its notes) |
+| Lowest | 0 | 0 |
+
+The **maximum** is 10 × the notes of the hand you play (right, left, or both: the two added
+together). The song keeps its nominal maximum, with all its notes; each practice keeps its
+**real maximum**, the notes that were really asked for (a small keyboard or a transposition can
+leave some notes out), and the percentage is the score over that real maximum, rounded down
+(100 % only for a perfect practice).
+
+### The result
+
+When a whole practice ends, a window shows its result: the song, mode, hand, speed, date and
+duration; the score over the real maximum and the percentage; the comparison with the best
+practice before of the same song, mode and hand (a new best, the same, or how far below it); the
+number of errors of each kind; and every error with its bar, beat, kind, the note expected and the
+note played, named as in the score. With **Repeat song** checked the window is not shown (the song
+starts again at once), but the practice is saved all the same and is in the history.
+
+### The practice history
+
+**Song → Practice History...** shows the practices of the active profile: one row per song, mode
+and hand (how many practices, the best and the last one), and below it the practices of the
+chosen row, the newest first and the best in bold. **Show Errors...** (or a double click) opens
+the result of a practice with its errors.
+
+### Where it is saved
+
+In `progress.db` (SQLite), next to `library.db` in the settings folder: `%APPDATA%\PianoBooster`,
+or the folder of the settings file given with `--settings=<file>`. `library.db` does not change,
+so it is still shared with the C++ program. Deleting `progress.db` deletes all the profiles and
+practices; a new one is made the next time the program starts.
+
 ## Roadmap
 
 | Phase | | |
@@ -51,6 +133,7 @@ The full plan, the decisions and the state of each phase are in [PORTING.md](POR
 | 4 | Main window: side panel, top bar, settings | done |
 | 5 | Song library, sections, section editor, dialogs | done |
 | 6 | Translations and Windows package | done |
+| 7 | Profiles and practice scores ([FEATURES.md](FEATURES.md), in Spanish) | done |
 
 ## Building
 
@@ -82,7 +165,7 @@ The translations come from the `.ts` files of the C++ code: `tools/ts-to-resx.ps
 src/PianoBooster.Core         the musical core (no interface)
 src/PianoBooster.Midi         MIDI devices (DryWetMIDI, FluidSynth) and the conductor thread
 src/PianoBooster.Rendering    the scrolling score drawn with SkiaSharp
-src/PianoBooster.Data         the settings file (JSON) and the song library (SQLite)
+src/PianoBooster.Data         the settings file (JSON), the song library and the practices (SQLite)
 src/PianoBooster.App          the application (Avalonia)
 tests/PianoBooster.*.Tests    the tests; Core.Tests has the C# twin of RefDump and the test MIDI files
 tools/RefDump                 the original C++ core writing the reference outputs
