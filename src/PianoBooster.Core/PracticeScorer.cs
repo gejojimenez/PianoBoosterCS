@@ -128,15 +128,24 @@ public sealed class PracticeScorer : IPerformanceObserver
     private bool _loopActive;
     private bool? _reachedEnd;
 
+    /// <summary>A scorer of a practice in this mode. Only follow you and play along are scored
+    /// (D10): for another mode it is a mistake of the caller, which is logged, and the scorer does
+    /// nothing (<see cref="IsScored"/> is false). It does not throw: it is made in the thread of
+    /// the interface, where an exception would close the application.</summary>
     public PracticeScorer(PlayMode mode)
     {
-        if (mode != PlayMode.FollowYou && mode != PlayMode.PlayAlong)
-            throw new ArgumentException("Only follow you and play along are scored (D10)", nameof(mode));
         Mode = mode;
         _follow = mode == PlayMode.FollowYou;
+        IsScored = mode == PlayMode.FollowYou || mode == PlayMode.PlayAlong;
+        if (!IsScored)
+            Log.Error($"A practice in the mode {mode} is not scored");
     }
 
     public PlayMode Mode { get; }
+
+    /// <summary>False for a mode that is not scored: the events are ignored and the
+    /// <see cref="Result"/> stays empty (never started, never reached the end), so it can't be saved.</summary>
+    public bool IsScored { get; }
 
     public int Score
     {
@@ -174,6 +183,8 @@ public sealed class PracticeScorer : IPerformanceObserver
 
     public void OnPerformanceEvent(PerformanceEvent performanceEvent)
     {
+        if (!IsScored)
+            return;
         lock (_lock)
         {
             switch (performanceEvent)

@@ -52,12 +52,37 @@ public class PracticeScorerTests
         scorer.OnPerformanceEvent(new NotesMissed(chord,
             chord.Notes.Where(n => pitches.Contains(n.Pitch)).ToArray(), reason));
 
-    [Fact]
-    public void OnlyFollowYouAndPlayAlongAreScored()
+    [Theory]
+    [InlineData(PlayMode.Listen)]
+    [InlineData(PlayMode.RhythmTapping)]
+    public void OnlyFollowYouAndPlayAlongAreScored(PlayMode mode)
     {
-        Assert.Throws<ArgumentException>(() => new PracticeScorer(PlayMode.Listen));
-        Assert.Throws<ArgumentException>(() => new PracticeScorer(PlayMode.RhythmTapping));
+        // a mistake of the caller: no exception (it would close the app), a scorer that does nothing
+        var scorer = Start(mode);
+        Assert.False(scorer.IsScored);
+        Assert.Equal(mode, scorer.Mode);
+
+        ExpectedChord chord = Chord(0, 0, 60, 64);
+        Expect(scorer, chord);
+        Play(scorer, chord, 60);
+        Wrong(scorer, chord, 61, 64);
+        Miss(scorer, chord, MissReason.Skipped, 64);
+        scorer.OnPerformanceEvent(new PlayingStopped(true));
+
+        PracticeResult result = scorer.Result;
+        Assert.False(result.Started);
+        Assert.Null(result.ReachedEnd); // never a whole practice, so never saved (D8)
+        Assert.Equal(0, result.Score);
+        Assert.Equal(0, result.MaxScore);
+        Assert.Equal(0, result.NotesExpected);
+        Assert.Empty(result.Errors);
     }
+
+    [Theory]
+    [InlineData(PlayMode.FollowYou)]
+    [InlineData(PlayMode.PlayAlong)]
+    public void FollowYouAndPlayAlongAreScored(PlayMode mode) =>
+        Assert.True(new PracticeScorer(mode).IsScored);
 
     [Theory]
     [InlineData(PlayMode.FollowYou)]

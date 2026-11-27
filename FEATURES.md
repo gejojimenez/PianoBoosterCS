@@ -42,7 +42,7 @@ hecho" corto debajo de la fase.**
 | 1.0 | **hecha** (27 nov 2026) | Decisiones D1–D13 y D2b aceptadas. Ver §4.3 |
 | 1.1 | **hecha** (27 nov 2026) | Eventos de interpretación en el `Conductor`. Rama `feature-1.1-performance-events` |
 | 1.2 | **hecha** (27 nov 2026) | `PracticeScorer`, `SongMaxScore`, `ScoringRules`. Rama `feature-1.2-scorer` |
-| 1.3 | pendiente | Base de datos de progreso |
+| 1.3 | **hecha** (27 nov 2026) | `ProgressStore` (`progress.db`), `IProgressStore`. Rama `feature-1.3-progress-db` |
 | 1.4 | pendiente | Sesión de práctica en la app (canción entera → registro) |
 | 1.5 | pendiente | Interfaz de perfiles |
 | 1.6 | pendiente | Resultado al terminar y historial |
@@ -274,7 +274,9 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
   −5, omitida −10; Acompañar: a tiempo +10, adelanto/retraso +5, omitida y equivocada +0) y
   `ToleranceWindowZones` = 1 (ventanas de D2b del mismo ancho que la zona).
 - `Core/PracticeScorer.cs`: `PracticeScorer : IPerformanceObserver` (solo `FollowYou`/`PlayAlong`, D10;
-  otro modo lanza `ArgumentException`). Lleva el estado de cada nota de cada acorde (pendiente, a tiempo,
+  con otro modo **no lanza** —corregido en la fase 1.3: se crea en el hilo de la interfaz, sin
+  manejador global, y lo cerraría—: registra un `Log.Error`, `IsScored` = false, ignora los eventos y
+  su `Result` se queda vacío, sin `Started` ni `ReachedEnd`, así que nunca se guarda). Lleva el estado de cada nota de cada acorde (pendiente, a tiempo,
   adelanto, retraso, omitida), así los errores se cuentan por nota. `PlayingStarted` empieza de cero;
   `PlayingStopped` deja `ReachedEnd`. `Result` (desde cualquier hilo, con lock) da un `PracticeResult`:
   `Score`, `MaxScore`, `NotesExpected`, `Errors` (`PracticeError(Bar, Beat, Tick, Kind, ExpectedNote,
@@ -323,6 +325,41 @@ Repasar §4.3 con el usuario y escribir la decisión final de cada punto. Sin c�
 - **Pruebas** en `PianoBooster.Data.Tests` con base temporal: esquema, guardar y leer una práctica con
   varios errores en el mismo compás y tiempo, borrar perfil borra sus prácticas, canción movida (mismo
   hash), reabrir.
+
+**Lo hecho (27 nov 2026):**
+
+- `Core/ProgressTypes.cs`: `ProgressProfile(Id, Name, Created)`, `ProgressSong(Id, Hash, Path, Title,
+  MaxScore)` (`SongMaxScore?`, null hasta que se calcule), `PracticeRecord` (propiedades `init`: perfil,
+  canción, `Mode`, `Hand` Right/Left/Both, `Speed` en %, `Started`/`Ended`, `Score`, `MaxScore` real,
+  `NotesExpected`, `ErrorCount`, `Errors`, `Percent`; `FromResult(PracticeResult, ...)` para 1.4) e
+  `IProgressStore`.
+- `Data/ProgressStore.cs`: el esquema de §4.4 tal cual (`user_version = 1`, `SchemaVersion`),
+  `foreign_keys = ON` y `ON DELETE CASCADE` (perfil → prácticas → errores). Una conexión, sin pool
+  (el fichero se cierra con `Dispose`); errores con `Log.Error` y la operación no hace nada; cerrada
+  (`IsOpen` false) todo devuelve vacío/null/-1. Textos: modo `follow`/`playalong`, mano
+  `right`/`left`/`both` (en errores, NULL si `None`), tipo `early`/`late`/`wrong`/`missed`, notas NULL
+  si no hay; fechas `yyyy-MM-ddTHH:mm:ss` locales (se pierden los milisegundos).
+  - Perfiles: `CreateProfile` (recorta espacios; -1 si vacío o repetido), `RenameProfile`,
+    `DeleteProfile` (con sus prácticas), `Profiles()` (por nombre sin mayúsculas), `Profile(id)`.
+    El perfil por defecto (D13) queda para 1.5.
+  - Canciones: `Song(hash)`, `GetOrCreateSong(hash, path, title)` (si ya está con otra ruta o título
+    los actualiza; un título vacío no borra el que había; hash vacío → null), `SetSongMaxScore`.
+  - Prácticas: `SavePractice` (práctica y errores en una transacción; `error_count` = `Errors.Count`;
+    perfil o canción que no existen → -1 y nada guardado; Escuchar/Ritmo o mano `None` → -1 con
+    `Log.Error`, **sin excepción**: la app no tiene manejador global y una excepción en el hilo de la
+    interfaz la cerraría), `Practice(id)` con errores, `Practices(perfil, canción, modo, mano)` (la más
+    nueva primero, **sin** errores: usar `ErrorCount`), `BestPractice` (mayor porcentaje sobre la
+    máxima real, luego mayor puntuación, luego la más antigua) y `LastPractice`, con errores. Las
+    consultas con Escuchar/Ritmo o mano `None` dan vacío/null. El `ProgressStore` no lanza nunca.
+- Pruebas: `ProgressStoreTests` (11, base en una carpeta temporal): esquema y columnas, perfiles
+  (repetidos, vacíos, renombrar), práctica con 5 errores (2 en el mismo compás y tiempo, notas NULL)
+  leída igual, práctica de perfil/canción inexistente no se guarda, modos sin prácticas (-1, nada
+  guardado, consultas vacías y la base sigue funcionando), filtros y
+  orden de `Practices`/`BestPractice`/`LastPractice`, borrar perfil borra prácticas y errores,
+  canción movida (mismo hash), reabrir, `FromResult` y sin base de datos. Las 72 de referencia, sin
+  cambios.
+- Corregido de 1.2: `PracticeScorer` ya no lanza con Escuchar/Ritmo (ver su "Lo hecho"); la prueba
+  `OnlyFollowYouAndPlayAlongAreScored` comprueba que no puntúa ni da una práctica entera.
 
 #### 1.4 Sesión de práctica en la app (rama `feature-1.4-practice-session`, necesita 1.2 y 1.3)
 
