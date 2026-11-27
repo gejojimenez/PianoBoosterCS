@@ -134,6 +134,178 @@ public sealed class TranslationTests : IDisposable
         })));
     }
 
+    // ---- Phase 1.7: no text of the new files without its Spanish translation ----
+
+    /// <summary>
+    /// The files written after the port (feature 1: profiles and scores). Every text of them that goes
+    /// through Strings, and every text of their XAML files, must be in Strings.es.resx. A new file of the
+    /// interface goes here too.
+    /// </summary>
+    private static readonly string[] s_filesAfterThePort =
+    {
+        "ActiveProfile.cs", "NoteText.cs", "PracticeSession.cs", "PracticeText.cs",
+        "ProfilesDialog.axaml", "ProfilesDialog.axaml.cs",
+        "PracticeResultDialog.axaml", "PracticeResultDialog.axaml.cs",
+        "ProgressDialog.axaml", "ProgressDialog.axaml.cs",
+    };
+
+    /// <summary>The texts added to files of the port by feature 1 (the rest of these files are the C++ texts).</summary>
+    private static readonly (string File, string Text)[] s_textsAddedToThePort =
+    {
+        ("MainWindow.axaml", "Practice _History ..."),
+        ("MainWindow.axaml", "The practices of the whole songs of the active profile"),
+        ("MainWindow.axaml", "Pro_files ..."),
+        ("MainWindow.axaml", "Create, rename, delete and choose the user profiles"),
+        ("MainWindow.axaml.cs", "User"),
+        ("TopBar.axaml", "The profile whose practices are saved: click to change it"),
+        ("TopBar.axaml.cs", "Profile: %1"),
+        ("TopBar.axaml.cs", "No profile"),
+        ("MessageDialog.cs", "OK"),
+        ("MessageDialog.cs", "Cancel"),
+        ("MessageDialog.cs", "Yes"),
+        ("MessageDialog.cs", "No"),
+    };
+
+    // a regular string literal, which must be the whole argument (not "a" + "b")
+    private const string CsString = "\"((?:[^\"\\\\\\r\\n]|\\\\.)*)\"";
+    private const string EndOfArgument = @"(?=\s*[,)])";
+    private static readonly System.Text.RegularExpressions.Regex s_tr =
+        new(@"\bStrings\.(Tr|TrPlural)\(\s*" + CsString + EndOfArgument);
+    private static readonly System.Text.RegularExpressions.Regex s_translate =
+        new(@"\bStrings\.Translate\(\s*" + CsString + @"\s*,\s*" + CsString + EndOfArgument);
+    private static readonly System.Text.RegularExpressions.Regex s_anyCall =
+        new(@"\bStrings\.(Tr|TrPlural|Translate)\(");
+
+    /// <summary>The value of a regular C# string literal (the escapes used in the texts).</summary>
+    private static string Unescape(string literal) => System.Text.RegularExpressions.Regex.Replace(literal,
+        @"\\(u[0-9A-Fa-f]{4}|.)", m => m.Groups[1].Value switch
+        {
+            "n" => "\n",
+            "r" => "\r",
+            "t" => "\t",
+            "0" => "\0",
+            var u when u.Length == 5 => ((char)Convert.ToInt32(u[1..], 16)).ToString(),
+            var c => c,
+        });
+
+    /// <summary>
+    /// The keys of Strings.es.resx that the texts of a file need: Tr(text) → text; TrPlural(text) →
+    /// text#0 and text#1 (the two forms of Spanish); Translate(context, text) → context|text or text; and
+    /// for a XAML file the texts that Strings.TranslateTree translates (Title, Content, Header, Text,
+    /// PlaceholderText, ToolTip.Tip), with the access key of Qt ("_New..." → "&amp;New...").
+    /// </summary>
+    private static List<(string Text, string[] Keys)> TextsOf(string path, bool onlyLiterals = true)
+    {
+        var texts = new List<(string, string[])>();
+        string source = File.ReadAllText(path);
+        if (path.EndsWith(".axaml", StringComparison.Ordinal))
+        {
+            foreach (XElement element in XDocument.Parse(source).Descendants())
+            {
+                foreach (XAttribute attribute in element.Attributes())
+                {
+                    string name = attribute.Name.LocalName, value = attribute.Value;
+                    if (value.Length == 0 || value.StartsWith('{') || attribute.Name.Namespace != XNamespace.None)
+                        continue; // a binding, or x:Name...
+                    bool accessKey = name is "Content" or "Header";
+                    if (name is "Title" or "Content" or "Header" or "Text" or "PlaceholderText" or "Watermark" or "ToolTip.Tip")
+                        texts.Add((value, new[] { accessKey ? Strings.AvaloniaToQtAccessKey(value) : value }));
+                }
+            }
+            return texts;
+        }
+
+        int calls = 0;
+        foreach (System.Text.RegularExpressions.Match m in s_tr.Matches(source))
+        {
+            string text = Unescape(m.Groups[2].Value);
+            texts.Add(m.Groups[1].Value == "TrPlural" ? (text, new[] { text + "#0" }) : (text, new[] { text }));
+            if (m.Groups[1].Value == "TrPlural")
+                texts.Add((text, new[] { text + "#1" }));
+            calls++;
+        }
+        foreach (System.Text.RegularExpressions.Match m in s_translate.Matches(source))
+        {
+            string text = Unescape(m.Groups[2].Value);
+            texts.Add((text, new[] { Unescape(m.Groups[1].Value) + "|" + text, text }));
+            calls++;
+        }
+        // a text that is not a literal (a variable, a concatenation) could not be checked: not allowed here
+        Assert.True(!onlyLiterals || calls == s_anyCall.Matches(source).Count,
+            $"{Path.GetFileName(path)}: a call of Strings without a literal text; write the text in the call");
+        return texts;
+    }
+
+    private static HashSet<string> SpanishKeys(string appFolder) =>
+        XDocument.Load(Path.Combine(appFolder, "translations", "Strings.es.resx")).Root!.Elements("data")
+            .Select(d => (string)d.Attribute("name")!).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>A format without words ("%1 / %2 (%3 %)") has nothing to translate.</summary>
+    private static bool HasWords(string text) =>
+        System.Text.RegularExpressions.Regex.Replace(text, @"%(\d|n)", "").Any(char.IsLetter);
+
+    [Fact]
+    public void EveryTextAfterThePortIsInSpanish()
+    {
+        string app = Path.Combine(RepositoryRoot(), "src", "PianoBooster.App");
+        HashSet<string> spanish = SpanishKeys(app);
+        var missing = new List<string>();
+        int checkedTexts = 0;
+
+        foreach (string file in s_filesAfterThePort)
+        {
+            foreach ((_, string[] keys) in TextsOf(Path.Combine(app, file)))
+            {
+                checkedTexts++;
+                if (HasWords(keys[0]) && !keys.Any(spanish.Contains))
+                    missing.Add($"{file}: \"{keys[0]}\"");
+            }
+        }
+        foreach ((string file, string text) in s_textsAddedToThePort)
+        {
+            // still there (otherwise the list is out of date), and translated
+            List<(string Text, string[] Keys)> texts = TextsOf(Path.Combine(app, file), onlyLiterals: false);
+            Assert.True(texts.Any(t => t.Text == text), $"{file}: \"{text}\" is no longer there; update the list");
+            foreach ((_, string[] keys) in texts.Where(t => t.Text == text))
+            {
+                checkedTexts++;
+                if (HasWords(keys[0]) && !keys.Any(spanish.Contains))
+                    missing.Add($"{file}: \"{keys[0]}\"");
+            }
+        }
+
+        Assert.True(checkedTexts > 100, $"only {checkedTexts} texts found: the scan does not work");
+        Assert.True(missing.Count == 0, "Not in Strings.es.resx:\n" + string.Join("\n", missing.Distinct()));
+    }
+
+    [Fact]
+    public void TheScanOfTheTexts()
+    {
+        string cs = Path.Combine(_folder, "x.cs"), axaml = Path.Combine(_folder, "x.axaml");
+        File.WriteAllText(cs, """
+            a = Strings.Tr("Say \"%1\"", b) + Strings.TrPlural(
+                "%n bar(s)", n) + Strings.Translate("CDraw", "B");
+            """);
+        Assert.Equal(new[] { "Say \"%1\"", "%n bar(s)#0", "%n bar(s)#1", "CDraw|B" },
+            TextsOf(cs).Select(t => t.Keys[0]).ToArray());
+
+        File.WriteAllText(axaml, """
+            <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="T">
+              <Button x:Name="b" Content="_New &amp; old..." ToolTip.Tip="Tip" />
+              <TextBlock Text="{Binding Name}" Margin="1" />
+              <MenuItem Header="_File" />
+            </Window>
+            """);
+        Assert.Equal(new[] { "T", "&New && old...", "Tip", "&File" }, TextsOf(axaml).Select(t => t.Keys[0]).ToArray());
+
+        foreach (string notALiteral in new[] { "a = Strings.Tr(name);", "a = Strings.Tr(\"a\" + \"b\");" })
+        {
+            File.WriteAllText(cs, notALiteral);
+            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => TextsOf(cs));
+            Assert.Empty(TextsOf(cs, onlyLiterals: false));
+        }
+    }
+
     [Fact]
     public void Plurals()
     {

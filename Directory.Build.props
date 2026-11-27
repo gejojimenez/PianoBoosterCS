@@ -9,6 +9,6 @@
     <Authors>PianoBooster contributors</Authors>
     <Copyright>Copyright (c) 2008-2026 L. J. Barman and the PianoBooster contributors</Copyright>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
-    <Version>1.4.0</Version>
+    <Version>1.5.0</Version>
   </PropertyGroup>
 </Project>
