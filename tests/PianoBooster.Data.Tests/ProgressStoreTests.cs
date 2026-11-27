@@ -235,6 +235,39 @@ public sealed class ProgressStoreTests : IDisposable
     }
 
     [Fact]
+    public void SummariesAreBySongModeAndHandOfOneProfile()
+    {
+        using ProgressStore store = Open();
+        long ana = store.CreateProfile("Ana");
+        long bea = store.CreateProfile("Bea");
+        long song = store.GetOrCreateSong("abc123", "C:/music/song.mid", "Song")!.Id;
+        long other = store.GetOrCreateSong("def456", "C:/music/other.mid", "Other")!.Id;
+
+        store.SavePractice(Practice(ana, song, 50, Start));
+        long best = store.SavePractice(Practice(ana, song, 90, Start.AddDays(1)));
+        store.SavePractice(Practice(ana, song, 90, Start.AddDays(2))); // as good, but later
+        store.SavePractice(Practice(ana, song, 72, Start.AddDays(3), maxScore: 80)); // 90 % too, fewer points
+        long along = store.SavePractice(Practice(ana, song, 40, Start.AddDays(5), mode: PlayMode.PlayAlong));
+        long right = store.SavePractice(Practice(ana, other, 60, Start.AddDays(4), hand: WhichPart.Right));
+        store.SavePractice(Practice(bea, other, 100, Start.AddDays(6)));
+
+        List<PracticeSummary> summaries = store.PracticeSummaries(ana);
+        Assert.Equal(new[] { ("Song", PlayMode.PlayAlong, WhichPart.Both), ("Other", PlayMode.FollowYou, WhichPart.Right),
+                ("Song", PlayMode.FollowYou, WhichPart.Both) },
+            summaries.Select(s => (s.Song.Title, s.Mode, s.Hand))); // the last practised first
+        Assert.Equal(new[] { 1, 1, 4 }, summaries.Select(s => s.Count));
+        Assert.Equal(new[] { along, right, best }, summaries.Select(s => s.Best.Id));
+        Assert.Equal(Start.AddDays(3).AddMinutes(2), summaries[2].LastEnded);
+        Assert.Equal("C:/music/song.mid", summaries[2].Song.Path);
+        Assert.All(summaries, s => Assert.Empty(s.Best.Errors));
+        Assert.Equal(best, store.BestPractice(ana, song, PlayMode.FollowYou, WhichPart.Both)!.Id); // the same order
+
+        PracticeSummary beas = Assert.Single(store.PracticeSummaries(bea));
+        Assert.Equal(("Other", 100), (beas.Song.Title, beas.Best.Score));
+        Assert.Empty(store.PracticeSummaries(999));
+    }
+
+    [Fact]
     public void DeletingAProfileDeletesItsPractices()
     {
         using ProgressStore store = Open();
@@ -348,5 +381,6 @@ public sealed class ProgressStoreTests : IDisposable
         Assert.Null(store.Practice(1));
         Assert.Empty(store.Practices(1, 1, PlayMode.FollowYou, WhichPart.Both));
         Assert.Null(store.BestPractice(1, 1, PlayMode.FollowYou, WhichPart.Both));
+        Assert.Empty(store.PracticeSummaries(1));
     }
 }

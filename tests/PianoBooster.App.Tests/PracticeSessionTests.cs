@@ -62,10 +62,10 @@ public sealed class PracticeSessionTests : IDisposable
         Tell(new ChordAccepted(chord, 0));
     }
 
-    private void PlaySong(bool reachEnd = true)
+    private void PlaySong(bool reachEnd = true, bool wrongNote = true)
     {
         PlayChord(Chord(1, 0, 60, 64));
-        PlayChord(Chord(2, 1, 62), wrongPitch: 63);
+        PlayChord(Chord(2, 1, 62), wrongPitch: wrongNote ? 63 : -1);
         _state.CurrentPosition = new BarPosition(1, 0, 0);
         PlayChord(Chord(3, 2, 65));
         Tell(new PlayingStopped(reachEnd));
@@ -81,8 +81,8 @@ public sealed class PracticeSessionTests : IDisposable
         Assert.True(_session.IsPractising);
         PlaySong();
         Assert.False(_session.IsPractising);
-        Assert.Equal(1, _session.SaveFinished());
-        Assert.Equal(0, _session.SaveFinished()); // only once
+        Assert.Single(_session.SaveFinished());
+        Assert.Empty(_session.SaveFinished()); // only once
 
         PracticeRecord last = _store.LastPractice(_profileId, _songId, PlayMode.FollowYou, WhichPart.Right)!;
         Assert.Equal(80, last.Speed);
@@ -95,13 +95,53 @@ public sealed class PracticeSessionTests : IDisposable
         Assert.True(last.Started >= before && last.Ended >= last.Started);
     }
 
+    // The whole practice once more, from the start
+    private SavedPractice PlayWhole(bool wrongNote = true)
+    {
+        _state.CurrentPosition = default;
+        Start();
+        PlaySong(wrongNote: wrongNote);
+        return Assert.Single(_session.SaveFinished());
+    }
+
+    [Fact]
+    public void TheSavedPracticeComesWithTheBestBeforeIt()
+    {
+        SavedPractice first = PlayWhole();
+        Assert.True(first.Practice.Id >= 0);
+        Assert.Equal(first.Practice.Id, _store.LastPractice(_profileId, _songId, PlayMode.FollowYou, WhichPart.Right)!.Id);
+        Assert.Equal(30, first.Practice.Score);
+        Assert.Single(first.Practice.Errors);
+        Assert.Null(first.PreviousBest);
+        Assert.True(first.IsNewBest);
+
+        SavedPractice same = PlayWhole(); // as good: not a new best, the earlier one stays the best
+        Assert.Equal(first.Practice.Id, same.PreviousBest!.Id);
+        Assert.False(same.IsNewBest);
+
+        SavedPractice better = PlayWhole(wrongNote: false);
+        Assert.Equal(40, better.Practice.Score);
+        Assert.Equal(first.Practice.Id, better.PreviousBest!.Id); // not itself
+        Assert.Single(better.PreviousBest.Errors);
+        Assert.True(better.IsNewBest);
+
+        SavedPractice worse = PlayWhole();
+        Assert.Equal(better.Practice.Id, worse.PreviousBest!.Id);
+        Assert.False(worse.IsNewBest);
+
+        // another hand has its own best
+        _state.Hand = WhichPart.Left;
+        SavedPractice left = PlayWhole();
+        Assert.Null(left.PreviousBest);
+    }
+
     [Fact]
     public void PlayAlongHasItsOwnRecord()
     {
         _state.Mode = PlayMode.PlayAlong;
         Start();
         PlaySong();
-        Assert.Equal(1, _session.SaveFinished());
+        Assert.Single(_session.SaveFinished());
         Assert.Single(_store.Practices(_profileId, _songId, PlayMode.PlayAlong, WhichPart.Right));
         Assert.Empty(_store.Practices(_profileId, _songId, PlayMode.FollowYou, WhichPart.Right));
     }
@@ -111,7 +151,7 @@ public sealed class PracticeSessionTests : IDisposable
     {
         Start();
         PlaySong(reachEnd: false);
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
         Assert.Equal(0, Saved());
     }
 
@@ -129,7 +169,7 @@ public sealed class PracticeSessionTests : IDisposable
         _state.CurrentPosition = default;
         Start();
         PlaySong();
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
         Assert.Equal(0, Saved());
     }
 
@@ -143,7 +183,7 @@ public sealed class PracticeSessionTests : IDisposable
         Start(); // the conductor tells its start bar again, but the song goes on from bar 1
         PlayChord(Chord(2, 1, 62));
         Tell(new PlayingStopped(true));
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
     }
 
     [Theory]
@@ -174,7 +214,7 @@ public sealed class PracticeSessionTests : IDisposable
         PlayChord(Chord(4, 2, 65));
         Assert.False(_session.IsPractising);
         Tell(new PlayingStopped(true));
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
         Assert.Empty(_store.Practices(_profileId, _songId, PlayMode.FollowYou, WhichPart.Right));
     }
 
@@ -189,7 +229,7 @@ public sealed class PracticeSessionTests : IDisposable
         _state.CurrentPosition = default;
         Start(); // played again from the start: "repeat the song"
         PlaySong();
-        Assert.Equal(1, _session.SaveFinished());
+        Assert.Single(_session.SaveFinished());
         Assert.Equal(90, _store.LastPractice(_profileId, _songId, PlayMode.FollowYou, WhichPart.Right)!.Speed);
     }
 
@@ -203,14 +243,14 @@ public sealed class PracticeSessionTests : IDisposable
         PlayChord(Chord(2, 1, 62));
         Assert.False(_session.IsPractising);
         Tell(new PlayingStopped(true));
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
         Assert.Equal(0, _store.PracticeCount(_profileId));
         Assert.Equal(0, _store.PracticeCount(bea));
 
         _state.CurrentPosition = default;
         Start(); // the next one is for the new profile
         PlaySong();
-        Assert.Equal(1, _session.SaveFinished());
+        Assert.Single(_session.SaveFinished());
         Assert.Equal(0, _store.PracticeCount(_profileId));
         Assert.Equal(1, _store.PracticeCount(bea));
     }
@@ -228,7 +268,7 @@ public sealed class PracticeSessionTests : IDisposable
         Assert.Equal(bea, active);
         PlayChord(Chord(2, 1, 62));
         Tell(new PlayingStopped(true));
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
         Assert.Equal(0, _store.PracticeCount(bea));
     }
 
@@ -239,7 +279,7 @@ public sealed class PracticeSessionTests : IDisposable
         Start();
         PlaySong();
         _store.DeleteProfile(_profileId);
-        Assert.Equal(0, _session.SaveFinished()); // no exception: the store refuses it
+        Assert.Empty(_session.SaveFinished()); // no exception: the store refuses it
     }
 
     [Fact]
@@ -276,7 +316,7 @@ public sealed class PracticeSessionTests : IDisposable
         Start();
         Assert.False(_session.IsPractising);
         PlaySong();
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
     }
 
     [Fact]
@@ -290,7 +330,7 @@ public sealed class PracticeSessionTests : IDisposable
         _state.CurrentPosition = default;
         Start();
         PlaySong();
-        Assert.Equal(0, _session.SaveFinished());
+        Assert.Empty(_session.SaveFinished());
     }
 
     [Fact]

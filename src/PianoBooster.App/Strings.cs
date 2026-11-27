@@ -39,6 +39,12 @@ internal static partial class Strings
     /// <summary>tr(text).arg(a).arg(b).</summary>
     public static string Tr(string text, object a, object b) => Tr(text).Replace("%1", a.ToString()).Replace("%2", b.ToString());
 
+    /// <summary>tr(text).arg(a).arg(b).arg(c).</summary>
+    public static string Tr(string text, object a, object b, object c) => Tr(text, a, b).Replace("%3", c.ToString());
+
+    /// <summary>tr(text).arg(a).arg(b).arg(c).arg(d).</summary>
+    public static string Tr(string text, object a, object b, object c, object d) => Tr(text, a, b, c).Replace("%4", d.ToString());
+
     /// <summary>
     /// QCoreApplication::translate(context, text): the translation in that context (a class of the C++
     /// code, e.g. "CDraw"), for the few texts translated differently in different contexts; otherwise Tr(text).

@@ -47,6 +47,40 @@ public sealed class PracticeRecord
     /// <summary>The score as a percentage of the real maximum (0 when nothing was asked for).</summary>
     public double Percent => MaxScore > 0 ? Score * 100.0 / MaxScore : 0;
 
+    /// <summary>Whether this practice is better than another in the order of
+    /// <see cref="IProgressStore.BestPractice"/>: a higher percentage of its real maximum, then a
+    /// higher score, then the earliest (then the lower id).</summary>
+    public bool IsBetterThan(PracticeRecord other)
+    {
+        double mine = MaxScore > 0 ? Score * 1.0 / MaxScore : 0;
+        double theirs = other.MaxScore > 0 ? other.Score * 1.0 / other.MaxScore : 0;
+        if (mine != theirs)
+            return mine > theirs;
+        if (Score != other.Score)
+            return Score > other.Score;
+        if (Started != other.Started)
+            return Started < other.Started;
+        return Id < other.Id;
+    }
+
+    /// <summary>The same practice with another id (the one it was saved with).</summary>
+    public PracticeRecord WithId(long id) => new()
+    {
+        Id = id,
+        ProfileId = ProfileId,
+        SongId = SongId,
+        Mode = Mode,
+        Hand = Hand,
+        Speed = Speed,
+        Started = Started,
+        Ended = Ended,
+        Score = Score,
+        MaxScore = MaxScore,
+        NotesExpected = NotesExpected,
+        ErrorCount = ErrorCount,
+        Errors = Errors,
+    };
+
     /// <summary>A record of the result of a <see cref="PracticeScorer"/>, to be saved.</summary>
     public static PracticeRecord FromResult(PracticeResult result, long profileId, long songId,
         WhichPart hand, int speed, DateTime started, DateTime ended) => new()
@@ -65,6 +99,14 @@ public sealed class PracticeRecord
         Errors = result.Errors,
     };
 }
+
+/// <summary>
+/// The practices of a profile with a song in a mode and with a hand, in short (the history of
+/// phase 1.6): how many, the best one (in the order of <see cref="IProgressStore.BestPractice"/>)
+/// and when the last one ended. <see cref="Best"/> has no errors.
+/// </summary>
+public sealed record PracticeSummary(ProgressSong Song, PlayMode Mode, WhichPart Hand, int Count,
+    PracticeRecord Best, DateTime LastEnded);
 
 /// <summary>
 /// The progress of the user profiles (progress.db, next to library.db, D12): the profiles, the
@@ -116,4 +158,7 @@ public interface IProgressStore
     PracticeRecord? BestPractice(long profileId, long songId, PlayMode mode, WhichPart hand);
     /// <summary>The newest of those practices, with its errors, or null.</summary>
     PracticeRecord? LastPractice(long profileId, long songId, PlayMode mode, WhichPart hand);
+    /// <summary>Each song, mode and hand that a profile has practised, the last practised first,
+    /// without errors (empty if none, or on error).</summary>
+    List<PracticeSummary> PracticeSummaries(long profileId);
 }

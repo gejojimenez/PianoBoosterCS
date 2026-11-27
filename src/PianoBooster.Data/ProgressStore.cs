@@ -302,14 +302,19 @@ public sealed class ProgressStore : IProgressStore, IDisposable
 
     // ---- songs ----
 
-    public ProgressSong? Song(string hash)
+    public ProgressSong? Song(string hash) =>
+        hash.Length == 0 ? null : QuerySong("WHERE hash = ?", hash);
+
+    private ProgressSong? SongById(long id) => QuerySong("WHERE id = ?", id);
+
+    private ProgressSong? QuerySong(string where, object value)
     {
-        if (_db == null || hash.Length == 0)
+        if (_db == null)
             return null;
         try
         {
             using SqliteCommand command = Command(
-                "SELECT id, hash, path, title, notes_right, notes_left FROM songs WHERE hash = ?", hash);
+                "SELECT id, hash, path, title, notes_right, notes_left FROM songs " + where, value);
             using SqliteDataReader q = command.ExecuteReader();
             if (!q.Read())
                 return null;
@@ -458,6 +463,38 @@ public sealed class ProgressStore : IProgressStore, IDisposable
 
     public PracticeRecord? LastPractice(long profileId, long songId, PlayMode mode, WhichPart hand) =>
         FirstWithErrors(QueryPracticesOf(profileId, songId, mode, hand, "ORDER BY started DESC, id DESC LIMIT 1"));
+
+    public List<PracticeSummary> PracticeSummaries(long profileId)
+    {
+        var result = new List<PracticeSummary>();
+        var groups = new Dictionary<(long Song, PlayMode Mode, WhichPart Hand), List<PracticeRecord>>();
+        var order = new List<(long Song, PlayMode Mode, WhichPart Hand)>(); // by their last practice
+        foreach (PracticeRecord practice in QueryPractices("WHERE profile_id = ? ORDER BY ended DESC, id DESC", profileId))
+        {
+            var key = (practice.SongId, practice.Mode, practice.Hand);
+            if (!groups.TryGetValue(key, out List<PracticeRecord>? group))
+            {
+                groups.Add(key, group = new List<PracticeRecord>());
+                order.Add(key);
+            }
+            group.Add(practice);
+        }
+        var songs = new Dictionary<long, ProgressSong?>();
+        foreach (var key in order)
+        {
+            if (!songs.TryGetValue(key.Song, out ProgressSong? song))
+                songs.Add(key.Song, song = SongById(key.Song));
+            if (song == null)
+                continue; // on error
+            List<PracticeRecord> group = groups[key];
+            PracticeRecord best = group[0];
+            foreach (PracticeRecord practice in group)
+                if (practice.IsBetterThan(best))
+                    best = practice;
+            result.Add(new PracticeSummary(song, key.Mode, key.Hand, group.Count, best, group[0].Ended));
+        }
+        return result;
+    }
 
     // The practices of a profile with a song in a mode and with a hand: none for a mode without
     // practices (D10) or no hand, as there can't be any saved

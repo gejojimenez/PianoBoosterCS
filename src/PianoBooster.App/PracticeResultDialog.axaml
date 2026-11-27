@@ -1,0 +1,46 @@
+<!-- Not in the C++ code: the result of a whole practice (phase 1.6 of FEATURES.md), shown when it
+     ends and from the history. GPLv3, like the rest of PianoBoosterCS. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PianoBooster.App.PracticeResultDialog"
+        Title="Practice Result" Width="620" Height="560" MinWidth="460" MinHeight="360"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="ListBox#errorList ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="ListBox#errorList ListBoxItem:nth-child(2n)">
+      <Setter Property="Background" Value="#0C000000" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="9">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                Margin="0,9,0,0">
+      <Button x:Name="closeButton" Content="Close" MinWidth="80" IsDefault="True" IsCancel="True"
+              HorizontalContentAlignment="Center" Click="OnCloseButtonClicked" />
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+      <TextBlock x:Name="songText" FontWeight="SemiBold" FontSize="16" TextWrapping="Wrap" />
+      <TextBlock x:Name="howText" TextWrapping="Wrap" />
+      <TextBlock x:Name="scoreText" FontWeight="SemiBold" FontSize="22" Margin="0,6,0,0" />
+      <TextBlock x:Name="bestText" TextWrapping="Wrap" />
+      <TextBlock x:Name="comparisonText" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock x:Name="countsText" TextWrapping="Wrap" Margin="0,6,0,0" />
+    </StackPanel>
+
+    <TextBlock x:Name="noErrorsText" DockPanel.Dock="Top" IsVisible="False" Text="No errors. Well done!" />
+
+    <Border x:Name="errorTable" BorderThickness="1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+      <DockPanel>
+        <Border x:Name="errorHeader" DockPanel.Dock="Top" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+        <ListBox x:Name="errorList" SelectionMode="Single" Padding="0" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+      </DockPanel>
+    </Border>
+  </DockPanel>
+</Window>
