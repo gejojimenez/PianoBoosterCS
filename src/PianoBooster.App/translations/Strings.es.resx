@@ -1515,4 +1515,7 @@ Los archivos no se borran, y las canciones conservan sus favoritas y estadístic
   <data name="Stop" xml:space="preserve">
     <value>Detener</value>
   </data>
+  <data name="User" xml:space="preserve">
+    <value>Usuario</value>
+  </data>
 </root>
